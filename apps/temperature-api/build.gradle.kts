@@ -5,18 +5,17 @@ plugins {
 }
 
 group = "ru.zvir.yp"
-version = "0.0.1-SNAPSHOT"
-description = "demo"
+version = "0.0.1"
+description = "temperature-api"
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-    }
+
+repositories {
+    mavenCentral()
 }
-
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter")
+    implementation("org.springframework.boot:spring-boot-starter-web")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 

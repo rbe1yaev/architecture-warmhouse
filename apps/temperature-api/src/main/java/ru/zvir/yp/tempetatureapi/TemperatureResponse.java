@@ -1,7 +1,7 @@
 package ru.zvir.yp.tempetatureapi;
 
 public class TemperatureResponse {
-    double value;
+    float value;
     String unit;
     String timestamp;
     String location;
@@ -14,7 +14,7 @@ public class TemperatureResponse {
     public TemperatureResponse() {
     }
 
-    public TemperatureResponse(double value, String unit, String timestamp, String location, String status, String sensor_id, String sensor_type, String description) {
+    public TemperatureResponse(float value, String unit, String timestamp, String location, String status, String sensor_id, String sensor_type, String description) {
         this.value = value;
         this.unit = unit;
         this.timestamp = timestamp;
@@ -25,11 +25,11 @@ public class TemperatureResponse {
         this.description = description;
     }
 
-    public double getValue() {
+    public float getValue() {
         return value;
     }
 
-    public void setValue(double value) {
+    public void setValue(float value) {
         this.value = value;
     }
 

@@ -5,7 +5,10 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.concurrent.ThreadLocalRandom;
 
 @RestController
@@ -21,9 +24,9 @@ public class TemperatureApiController {
             default -> "0";
         };
         return ResponseEntity.ok(new TemperatureResponse(
-                Math.round(ThreadLocalRandom.current().nextDouble(-100, 100) * 100.0) / 100.0,
+                ThreadLocalRandom.current().nextFloat(-100, 100),
                 "celsius",
-                LocalTime.now().toString(),
+                Instant.now().toString(),
                 location,
                 "OK",
                 sensorID,
@@ -42,9 +45,9 @@ public class TemperatureApiController {
             default -> "Unknown";
         };
         return ResponseEntity.ok(new TemperatureResponse(
-                Math.round(ThreadLocalRandom.current().nextDouble(-100, 100) * 100.0) / 100.0,
+                ThreadLocalRandom.current().nextFloat(-100, 100),
                 "celsius",
-                LocalTime.now().toString(),
+                Instant.now().toString(),
                 location,
                 "OK",
                 sensorId,

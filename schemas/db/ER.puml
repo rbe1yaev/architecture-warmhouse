@@ -1,0 +1,124 @@
+@startuml
+title Теплый дом ER-диаграмма
+
+top to bottom direction
+
+entity User {
+    *id: integer
+    ---
+    login: text
+    name: text
+    surname: text
+    email: text
+    telephone_number: text
+    created_at: timestamp
+    updated_at: timestamp
+}
+
+entity House {
+    *id: integer
+    ---
+    user_id: integer
+    address: text
+    name: text
+    created_at: timestamp
+    updated_at: timestamp
+}
+
+entity House_Location {
+    *id: integer
+    ---
+    house_id: integer
+    user_id: integer
+    name: text
+}
+
+
+entity Сlimate_Device {
+    *id: integer
+    ---
+    device_type: text
+    house_id: integer
+    location_id: integer
+    user_id: integer
+    serial_number: text
+    status: text
+    is_active: boolean
+    url: text
+    created_at: timestamp
+    updated_at: timestamp
+}
+
+
+entity Lighting_Device {
+    *id: integer
+    ---
+    device_type: text
+    house_id: integer
+    location_id: integer
+    user_id: integer
+    serial_number: text
+    status: text
+    is_active: boolean
+    url: text
+    created_at: timestamp
+    updated_at: timestamp
+}
+
+entity GateAccessControl_Device {
+    *id: integer
+    ---
+    device_type: text
+    house_id: integer
+    location_id: integer
+    user_id: integer
+    serial_number: text
+    status: text
+    is_active: boolean
+    url: text
+    created_at: timestamp
+    updated_at: timestamp
+}
+
+entity VideoStreaming_Device {
+    *id: integer
+    ---
+    device_type: text
+    house_id: integer
+    location_id: integer
+    user_id: integer
+    serial_number: text
+    status: text
+    is_active: boolean
+    url: text
+    created_at: timestamp
+    updated_at: timestamp
+}
+
+
+entity Telemetry_Event {
+    *id: integer
+    ---
+    device_id: integer
+    status: text
+    parameters: json
+    created_at: timestamp
+}
+
+
+User "1" *-- "0..*" House
+House "1" *-- "0..*" House_Location
+House_Location "1" *-- "0..*" Сlimate_Device
+House_Location "1" *-- "0..*" Lighting_Device
+House_Location "1" *-- "0..*" GateAccessControl_Device
+House_Location "1" *-- "0..*" VideoStreaming_Device
+User "1" *-- "0..*" Сlimate_Device
+User "1" *-- "0..*" Lighting_Device
+User "1" *-- "0..*" GateAccessControl_Device
+User "1" *-- "0..*" VideoStreaming_Device
+Сlimate_Device "1" *-- "0..*" Telemetry_Event
+Lighting_Device "1" *-- "0..*" Telemetry_Event
+GateAccessControl_Device "1" *-- "0..*" Telemetry_Event
+VideoStreaming_Device "1" *-- "0..*" Telemetry_Event
+
+@enduml

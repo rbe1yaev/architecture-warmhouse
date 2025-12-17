@@ -1,0 +1,222 @@
+openapi: 3.0.0
+info:
+  title: Smart Home API
+  version: 1.0.0
+  description: API для управления пользователями, домами, комнатами, устройствами и телеметрией
+
+servers:
+  - url: https://api.example.com
+
+paths:
+  /users:
+    post:
+      summary: Создать пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '201':
+          description: Пользователь создан
+    get:
+      summary: Получить список пользователей
+      responses:
+        '200':
+          description: OK
+
+  /users/{userId}:
+    put:
+      summary: Обновить пользователя
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: Пользователь обновлён
+    delete:
+      summary: Удалить пользователя
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Пользователь удалён
+
+  /houses:
+    post:
+      summary: Создать дом
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/House'
+      responses:
+        '201':
+          description: Дом создан
+    get:
+      summary: Получить список домов
+      responses:
+        '200':
+          description: OK
+
+  /rooms:
+    post:
+      summary: Создать комнату
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Room'
+      responses:
+        '201':
+          description: Комната создана
+
+  /devices:
+    post:
+      summary: Создать устройство
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Device'
+      responses:
+        '201':
+          description: Устройство создано
+    put:
+      summary: Обновить устройство
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Device'
+      responses:
+        '200':
+          description: Устройство обновлено
+    delete:
+      summary: Удалить устройство
+      parameters:
+        - name: deviceId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Устройство удалено
+
+  /telemetry:
+    post:
+      summary: Пуш телеметрии от устройства
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TelemetryEvent'
+      responses:
+        '202':
+          description: Телеметрия принята
+
+components:
+  schemas:
+    User:
+      type: object
+      required: [login, firstName, lastName, email]
+      properties:
+        id:
+          type: string
+        login:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+
+    House:
+      type: object
+      required: [name, address, userId]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        address:
+          type: string
+        userId:
+          type: string
+
+    Room:
+      type: object
+      required: [houseId, userId, name]
+      properties:
+        id:
+          type: string
+        houseId:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+
+    Device:
+      type: object
+      required: [deviceType, houseId, userId, locationId, serialNumber]
+      properties:
+        id:
+          type: string
+        deviceType:
+          type: string
+          enum:
+            - climate_device
+            - lighting_device
+            - gateAccessControl_device
+            - videoStreaming_device
+        houseId:
+          type: string
+        userId:
+          type: string
+        locationId:
+          description: ID комнаты
+          type: string
+        serialNumber:
+          type: string
+        status:
+          type: string
+        active:
+          type: boolean
+        url:
+          type: string
+
+    TelemetryEvent:
+      type: object
+      required: [deviceId, parameters]
+      properties:
+        deviceId:
+          type: string
+        parameters:
+          type: object
+          additionalProperties:
+            type: string
+

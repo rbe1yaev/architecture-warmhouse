@@ -1,0 +1,33 @@
+@startuml
+title Сервис управления сценариями умного дома
+
+top to bottom direction
+
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Component.puml
+
+Person(user, "Пользователь", "Пользователь системы Тёплый дом")
+ContainerQueue(Broker, "Брокер сообщений", "Kafka")
+Container_Boundary(WarmHouse, "Система Теплый дом") {
+  Container(ScenarioService, "Сервис управления сценариями умного дома", "Java, Spring", "Управление ЖЦ умных домов")
+  Container(ScenarioDatabase, "База Данных сценариев умных домов", "PostgreSQL", "Хранение информации об устройствах, привязанных к умному дому и сценариями их поведения")
+}
+
+Container(ScenarioService, "Сервис управления сценариями умного дома", "Java, Spring") {
+  Component(ScenarioController, "Контроллер управления умным домом", "Component: Rest Controller", "Получение запросов на добавление, удаление, изменение конфигурации умного дома")
+  Component(DeviceConsumer, "Консьюмер команд для учета устройств в умных домах", "Component: Kafka consumer", "Получение команд для добавление, изменение удаление устройств разных типов в умном доме")
+  Component(DeviceProducer, "Продюсер событий об изменения конфигурация устройств в уvных домах", "Component: Kafka producer", "Отправка команд на вкл/выкл или изменение датчика конкретного умного дома")
+  Component(ScenarioService, "Сервис работы с состоянием умного дома", "Component: Spring Boot", "Логика работы  с состоянием умного дом")
+  Component(DeviceService, "Сервис устройств", "Component: Spring Boot", "Логика выполнение команд над устройством умного дома")
+  Component(ScenarioRepository, "Репозиторий сценариев умного дома", "Component: Spring Boot", "Взаимодействие с БД")
+}
+
+Rel(ScenarioController,ScenarioService,"Вызов функций")
+Rel(ScenarioService,ScenarioRepository,"Изменение состояния умного дома")
+Rel(ScenarioRepository,ScenarioDatabase,"Чтение/запись данных")
+
+Rel(ScenarioService,DeviceProducer,"Публикация события изменения состояния датчика")
+Rel(DeviceConsumer,DeviceService,"Команда изменения состояния датчика")
+Rel(DeviceService,ScenarioService,"Изменение состояния умного дома")
+Rel(DeviceProducer,Broker,"Публикация события")
+Rel(Broker,DeviceConsumer,"Чтение команды")
+@enduml

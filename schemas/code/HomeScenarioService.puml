@@ -1,0 +1,87 @@
+@startuml
+title Сервис управления сценариями умного дома. Диаграмма кода
+
+top to bottom direction
+
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Component.puml
+
+class House {
+  +UUID id
+  +Map<String,String> parameters
+  +String status
+  +List<Device> devices
+}
+
+class Device {
+  +UUID id
+  +String deviceType
+  +UUID houseId
+  +String serialNumber
+  +String status
+  +boolean isActive
+  +String url
+}
+
+class Command {
+  +UUID id
+  +String commandType
+  +Map<String,String> parameters
+}
+
+class DeviceCommand {
+  +UUID deviceId
+}
+
+class HouseCommand {
+  +UUID houseId
+}
+
+class Event {
+  +UUID id
+  +UUID deviceId
+  +String EventType
+  +Map<String,String> parameters
+}
+
+class HouseCommand {
+  +UUID deviceId
+}
+
+class DeviceCommand {
+  +UUID houseId
+}
+
+class ScenarioService {
+  +void addHouse(HouseCommand d)
+  +void editHouse(HouseCommand d)
+  +void getHouse(UUID id)
+  +void removeHouse(HouseCommand d)
+  +void addDevice(DeviceCommand d)
+  +void changeDeviceStatus(DeviceCommand d)
+}
+
+
+class DeviceProducer {
+  +void publishEvent(Event d)
+}
+
+class DeviceConsumer {
+  +void consume(Command d)
+}
+
+Command <- DeviceCommand : implements
+Command <- HouseCommand : implements
+
+Event <- DeviceEvent : implements
+Event <- HouseEvent : implements
+
+DeviceConsumer -> ScenarioService : addHouse()
+DeviceConsumer -> ScenarioService : editHouse()
+DeviceConsumer -> ScenarioService : getHouse()
+DeviceConsumer -> ScenarioService : removeHouse()
+DeviceConsumer -> ScenarioService : addDevice()
+DeviceConsumer -> ScenarioService : changeDeviceStatus()
+
+ScenarioService -> DeviceProducer : publishEvent()
+
+@enduml

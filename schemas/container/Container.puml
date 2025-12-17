@@ -1,0 +1,58 @@
+@startuml
+title Тёплый дом
+
+top to bottom direction
+
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Component.puml
+
+Person(user, "Пользователь", "Пользователь системы Тёплый дом")
+Person(admin, "Админ", "Админ системы Тёплый дом")
+
+Person(device, "Устройство", "Устройство умного дома")
+System(WarmHouse, "Система Теплый дом", "Система управления умным домом")
+
+Container_Boundary(WarmHouse, "Система Теплый дом") {
+  Container(APIController, "API GATEWAY", "Java, SpringBoot", "Шлюз подключения внешних клиентов")
+
+  Container(DeviceController, "Devive Managament Service", "Java, SpringBoot", "Управление устройствами разных типов")
+  Container(СlimateService, "Сlimate Сontrol Service", "Java, SpringBoot", "Сервис коммуникации с датчиками отопления")
+  Container(LightingService, "Lighting service", "Java, SpringBoot", "Сервис коммуникации с датчиками освещения")
+  Container(GateAccessControlService, "Gate Access Control Service", "Java, SpringBoot", "Сервис коммуникации с датчиками управления воторами")
+  Container(VideoStreamingService, "Video Streaming Service", "Java, SpringBoot", "Сервис коммуникации с датчиками видеонаблюдения")
+  Container(TelemetryService, "Telemetry Service", "Java, SpringBoot", "Сервис обработки данных телеметрии от датчиков")
+  Container(HomeScenarioService, "Home Scenario Service", "Java, SpringBoot", "Сервис управления умным домом")
+
+  ContainerDb(DeviceDatabase, "База Данных Устройств", "PostgreSQL", "Хранение информации о устройствах")
+  ContainerDb(TelemetryDatabase, "База Данных Телеметрии", "PostgreSQL", "Хранение информации о телеметрии")
+  ContainerDb(ScenarioDatabase, "База Данных Сценариев", "PostgreSQL", "Хранение информации о сценариях")
+
+  ContainerQueue(Broker, "Брокер сообщений", "Kafka")
+
+}
+Rel(user, APIController, "Использование системы")
+Rel(admin, APIController, "Добавление нового типа/версии датчика")
+Rel(device, APIController, "Передача телеметрии")
+Rel(APIController, HomeScenarioService, "Управление сценариями умного дома")
+Rel(APIController, DeviceController, "Добавление нового типа/версии датчика")
+Rel(APIController, GateAccessControlService, "Передача  показаний от датчиков")
+Rel(APIController, LightingService, "Передача  показаний от датчиков")
+Rel(APIController, СlimateService, "Передача  показаний от датчиков")
+Rel(APIController, VideoStreamingService, "Передача  показаний от датчиков")
+Rel(DeviceController, Broker, "Команды управления жизненным циклом и статусом датчика")
+Rel(Broker, DeviceController, "События об изменении жизненного цикла и статуса датчика")
+Rel(HomeScenarioService, Broker,"Команды управления конфигурации и номенклатуры устройств пользователя")
+Rel(Broker, HomeScenarioService,"События об изменении конфигурации и номенклатуры устройств пользователя")
+Rel(СlimateService, Broker, "Передача телеметрии об управлении климатом от датчика")
+Rel(LightingService, Broker, "Передача телеметрии об управлении освещением от датчика")
+Rel(GateAccessControlService, Broker, "Передача телеметрии об управлении воротами от датчика")
+Rel(VideoStreamingService, Broker,"Передача телеметрии о видеонаблюдении от датчика")
+Rel(СlimateService, device, "Команды управления датчиками")
+Rel(LightingService, device, "Команды управления датчиками")
+Rel(GateAccessControlService, device, "Команды управления датчиками")
+Rel(VideoStreamingService, device,"Команды управления датчиками")
+Rel(Broker,TelemetryService,"обработка данных телеметрии от устройств")
+Rel(TelemetryService,Broker,"Чтение данных телеметрии по устройству")
+Rel(DeviceController,DeviceDatabase,"Управление устройством")
+Rel(HomeScenarioService,ScenarioDatabase,"Управление умным домом пользователя")
+Rel(TelemetryService,TelemetryDatabase,"Запись телеметрии устройств")
+@enduml

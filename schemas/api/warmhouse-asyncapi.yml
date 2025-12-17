@@ -1,0 +1,276 @@
+asyncapi: 3.0.0
+info:
+  title: Smart Home Events API
+  version: 1.0.0
+  description: >-
+    Асинхронные события домена Smart Home (пользователи, дома, комнаты,
+    устройства, телеметрия)
+defaultContentType: application/json
+servers:
+  kafkaBroker:
+    host: 'kafka:9092'
+    protocol: kafka
+    description: Kafka broker для доменных событий
+channels:
+  user.events:
+    address: user.events
+    messages:
+      publish.message.0:
+        $ref: '#/components/messages/UserCreated'
+      publish.message.1:
+        $ref: '#/components/messages/UserUpdated'
+      publish.message.2:
+        $ref: '#/components/messages/UserDeleted'
+    description: События жизненного цикла пользователя
+  house.events:
+    address: house.events
+    messages:
+      publish.message.0:
+        $ref: '#/components/messages/HouseCreated'
+      publish.message.1:
+        $ref: '#/components/messages/HouseUpdated'
+      publish.message.2:
+        $ref: '#/components/messages/HouseDeleted'
+    description: События жизненного цикла дома
+  room.events:
+    address: room.events
+    messages:
+      publish.message.0:
+        $ref: '#/components/messages/RoomCreated'
+      publish.message.1:
+        $ref: '#/components/messages/RoomUpdated'
+      publish.message.2:
+        $ref: '#/components/messages/RoomDeleted'
+    description: События жизненного цикла комнаты
+  device.events:
+    address: device.events
+    messages:
+      publish.message.0:
+        $ref: '#/components/messages/DeviceCreated'
+      publish.message.1:
+        $ref: '#/components/messages/DeviceUpdated'
+      publish.message.2:
+        $ref: '#/components/messages/DeviceDeleted'
+    description: События жизненного цикла устройства
+  telemetry.events:
+    address: telemetry.events
+    messages:
+      publish.message:
+        $ref: '#/components/messages/TelemetryEvent'
+    description: События телеметрии устройств
+operations:
+  user.events.publish:
+    action: receive
+    channel:
+      $ref: '#/channels/user.events'
+    messages:
+      - $ref: '#/channels/user.events/messages/publish.message.0'
+      - $ref: '#/channels/user.events/messages/publish.message.1'
+      - $ref: '#/channels/user.events/messages/publish.message.2'
+  house.events.publish:
+    action: receive
+    channel:
+      $ref: '#/channels/house.events'
+    messages:
+      - $ref: '#/channels/house.events/messages/publish.message.0'
+      - $ref: '#/channels/house.events/messages/publish.message.1'
+      - $ref: '#/channels/house.events/messages/publish.message.2'
+  room.events.publish:
+    action: receive
+    channel:
+      $ref: '#/channels/room.events'
+    messages:
+      - $ref: '#/channels/room.events/messages/publish.message.0'
+      - $ref: '#/channels/room.events/messages/publish.message.1'
+      - $ref: '#/channels/room.events/messages/publish.message.2'
+  device.events.publish:
+    action: receive
+    channel:
+      $ref: '#/channels/device.events'
+    messages:
+      - $ref: '#/channels/device.events/messages/publish.message.0'
+      - $ref: '#/channels/device.events/messages/publish.message.1'
+      - $ref: '#/channels/device.events/messages/publish.message.2'
+  telemetry.events.publish:
+    action: receive
+    channel:
+      $ref: '#/channels/telemetry.events'
+    messages:
+      - $ref: '#/channels/telemetry.events/messages/publish.message'
+components:
+  messages:
+    UserCreated:
+      name: UserCreated
+      title: Пользователь создан
+      payload:
+        $ref: '#/components/schemas/User'
+    UserUpdated:
+      name: UserUpdated
+      title: Пользователь обновлён
+      payload:
+        $ref: '#/components/schemas/User'
+    UserDeleted:
+      name: UserDeleted
+      title: Пользователь удалён
+      payload:
+        type: object
+        required:
+          - id
+        properties:
+          id:
+            type: string
+    HouseCreated:
+      name: HouseCreated
+      payload:
+        $ref: '#/components/schemas/House'
+    HouseUpdated:
+      name: HouseUpdated
+      payload:
+        $ref: '#/components/schemas/House'
+    HouseDeleted:
+      name: HouseDeleted
+      payload:
+        type: object
+        required:
+          - id
+        properties:
+          id:
+            type: string
+    RoomCreated:
+      name: RoomCreated
+      payload:
+        $ref: '#/components/schemas/Room'
+    RoomUpdated:
+      name: RoomUpdated
+      payload:
+        $ref: '#/components/schemas/Room'
+    RoomDeleted:
+      name: RoomDeleted
+      payload:
+        type: object
+        required:
+          - id
+        properties:
+          id:
+            type: string
+    DeviceCreated:
+      name: DeviceCreated
+      payload:
+        $ref: '#/components/schemas/Device'
+    DeviceUpdated:
+      name: DeviceUpdated
+      payload:
+        $ref: '#/components/schemas/Device'
+    DeviceDeleted:
+      name: DeviceDeleted
+      payload:
+        type: object
+        required:
+          - id
+        properties:
+          id:
+            type: string
+    TelemetryEvent:
+      name: TelemetryEvent
+      title: Телеметрия устройства
+      payload:
+        $ref: '#/components/schemas/TelemetryEvent'
+  schemas:
+    User:
+      type: object
+      required:
+        - id
+        - login
+        - firstName
+        - lastName
+        - email
+      properties:
+        id:
+          type: string
+        login:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+    House:
+      type: object
+      required:
+        - id
+        - name
+        - address
+        - userId
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        address:
+          type: string
+        userId:
+          type: string
+    Room:
+      type: object
+      required:
+        - id
+        - houseId
+        - userId
+        - name
+      properties:
+        id:
+          type: string
+        houseId:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+    Device:
+      type: object
+      required:
+        - id
+        - deviceType
+        - houseId
+        - userId
+        - locationId
+        - serialNumber
+      properties:
+        id:
+          type: string
+        deviceType:
+          type: string
+          enum:
+            - climate_device
+            - lighting_device
+            - gateAccessControl_device
+            - videoStreaming_device
+        houseId:
+          type: string
+        userId:
+          type: string
+        locationId:
+          type: string
+        serialNumber:
+          type: string
+        status:
+          type: string
+        active:
+          type: boolean
+        url:
+          type: string
+    TelemetryEvent:
+      type: object
+      required:
+        - deviceId
+        - parameters
+      properties:
+        deviceId:
+          type: string
+        parameters:
+          type: object
+          additionalProperties:
+            type: string

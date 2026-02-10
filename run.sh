@@ -2,14 +2,13 @@
 
 echo "Building Smart House Microservices..."
 
-# Сборка всех сервисов
 docker-compose build
 
 echo "Starting services..."
 docker-compose up -d
 
 echo "Waiting for services to start..."
-sleep 60
+sleep 30
 
 echo "Checking services health..."
 
@@ -24,9 +23,9 @@ echo "- Device Manager: http://localhost:8003"
 echo "- Telemetry Service: http://localhost:8004"
 echo "- Notification Service: http://localhost:8005"
 echo "- Kafka: localhost:9092"
+echo "- Kafka-ui: http://localhost:7777"
+
 echo "- ClickHouse: http://localhost:8123"
-echo "- Grafana: http://localhost:3000 (admin/admin)"
-echo "- Prometheus: http://localhost:9090"
 echo ""
 echo "API Documentation: http://localhost:8000/docs"
 echo ""

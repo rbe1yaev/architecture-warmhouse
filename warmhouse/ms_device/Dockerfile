@@ -2,15 +2,14 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Установка зависимостей
-COPY requirements.txt .
+COPY warmhouse/ms_device/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копирование исходного кода
 COPY . .
+
+ENV PYTHONPATH=/app
 
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
-# Запуск приложения
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uvicorn", "warmhouse.ms_device.app:app", "--reload", "--host", "0.0.0.0", "--port", "8002"]

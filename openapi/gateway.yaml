@@ -1,0 +1,500 @@
+openapi: 3.0.3
+info:
+  title: Smart House API
+  version: 1.0.0
+  description: API для управления умным домом
+servers:
+  - url: https://api.smarthouse.com/v1
+
+paths:
+  /auth/login:
+    post:
+      summary: Аутентификация пользователя
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Успешная аутентификация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Неверные учетные данные
+        '500':
+          description: Внутренняя ошибка сервера
+
+  /devices:
+    get:
+      summary: Получить список всех устройств
+      tags: [Devices]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Список устройств
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Device'
+
+    post:
+      summary: Добавить новое устройство
+      tags: [Devices]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDeviceRequest'
+      responses:
+        '201':
+          description: Устройство успешно добавлено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+
+  /devices/{device_id}:
+    get:
+      summary: Получить информацию об устройстве
+      tags: [Devices]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Информация об устройстве
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+
+    patch:
+      summary: Обновить состояние устройства
+      tags: [Devices]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDeviceRequest'
+      responses:
+        '200':
+          description: Состояние устройства обновлено
+        '404':
+          description: Устройство не найдено
+
+  /devices/{device_id}/command:
+    post:
+      summary: Отправить команду устройству
+      tags: [Devices]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceCommand'
+      responses:
+        '202':
+          description: Команда принята к исполнению
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandResponse'
+
+  /scenarios:
+    get:
+      summary: Получить список сценариев
+      tags: [Scenarios]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Список сценариев
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Scenario'
+
+    post:
+      summary: Создать новый сценарий
+      tags: [Scenarios]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateScenarioRequest'
+      responses:
+        '201':
+          description: Сценарий создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
+
+  /scenarios/{scenario_id}/execute:
+    post:
+      summary: Выполнить сценарий
+      tags: [Scenarios]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scenario_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Сценарий запущен
+        '404':
+          description: Сценарий не найден
+
+  /telemetry/latest:
+    get:
+      summary: Получить последние данные телеметрии
+      tags: [Telemetry]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: device_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Данные телеметрии
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TelemetryData'
+
+  /telemetry/history:
+    get:
+      summary: Получить исторические данные
+      tags: [Telemetry]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: device_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: end_date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: interval
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [raw, minute, hour, day]
+            default: raw
+      responses:
+        '200':
+          description: Исторические данные
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TelemetryPoint'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          example: "secure_password123"
+
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        token_type:
+          type: string
+          example: "bearer"
+        expires_in:
+          type: integer
+          example: 3600
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    #Устройства
+    Device:
+      type: object
+      required:
+        - id
+        - name
+        - type
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum: [temperature_sensor, thermostat, light, lock, camera]
+        status:
+          type: string
+          enum: [online, offline, error]
+        location:
+          type: string
+        last_seen:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+
+    CreateDeviceRequest:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        location:
+          type: string
+        configuration:
+          type: object
+
+    UpdateDeviceRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        location:
+          type: string
+        status:
+          type: string
+          enum: [online, offline]
+
+    DeviceCommand:
+      type: object
+      required:
+        - command
+      properties:
+        command:
+          type: string
+          example: "turn_on"
+        parameters:
+          type: object
+          properties:
+            temperature:
+              type: number
+            brightness:
+              type: integer
+              minimum: 0
+              maximum: 100
+        schedule:
+          type: string
+          format: date-time
+
+    CommandResponse:
+      type: object
+      properties:
+        command_id:
+          type: string
+        status:
+          type: string
+          enum: [accepted, queued, executing, completed, failed]
+        timestamp:
+          type: string
+          format: date-time
+        message:
+          type: string
+
+    Scenario:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        trigger:
+          $ref: '#/components/schemas/Trigger'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Action'
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    CreateScenarioRequest:
+      type: object
+      required:
+        - name
+        - trigger
+        - actions
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        trigger:
+          $ref: '#/components/schemas/Trigger'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Action'
+        enabled:
+          type: boolean
+          default: true
+
+    Trigger:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [time, device_state, temperature, manual]
+        condition:
+          type: object
+        schedule:
+          type: string
+
+    Action:
+      type: object
+      required:
+        - device_id
+        - command
+      properties:
+        device_id:
+          type: string
+        command:
+          type: string
+        parameters:
+          type: object
+        delay:
+          type: integer
+
+    TelemetryData:
+      type: object
+      properties:
+        device_id:
+          type: string
+        device_name:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        metrics:
+          type: object
+          properties:
+            temperature:
+              type: number
+            humidity:
+              type: number
+            power_consumption:
+              type: number
+        status:
+          type: string
+
+    TelemetryPoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        value:
+          type: number
+        unit:
+          type: string

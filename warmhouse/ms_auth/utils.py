@@ -1,5 +1,9 @@
-from warmhouse.ms_auth.app import pwd_context
+from fastapi.security import OAuth2PasswordBearer
+from passlib.context import (CryptContext)
 
+DEPS = {}
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)

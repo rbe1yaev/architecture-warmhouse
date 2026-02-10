@@ -9,7 +9,7 @@ __all__ = (
     'trigger_event',
 )
 
-from warmhouse.ms_pusher.app import PUSHER_CLUSTER, PUSHER_APP_ID, PUSHER_SECRET, PUSHER_KEY
+from warmhouse.ms_pusher.settings import PUSHER_CLUSTER, PUSHER_APP_ID, PUSHER_SECRET, PUSHER_KEY
 
 AUTH_VERSION = '1.0'
 API_URL = 'https://api-%s.pusher.com' % PUSHER_CLUSTER

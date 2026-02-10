@@ -6,7 +6,7 @@ from typing import Dict, List
 
 from aiokafka import AIOKafkaConsumer
 
-from warmhouse.ms_pusher.app import KAFKA_BROKERS
+from warmhouse.ms_pusher.settings import KAFKA_BROKERS, FAKE_PUSHER
 if FAKE_PUSHER:
     from warmhouse.ms_pusher.clients.fake.pusher import trigger_event
 else:

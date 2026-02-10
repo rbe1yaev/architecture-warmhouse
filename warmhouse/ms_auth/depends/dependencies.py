@@ -1,6 +1,6 @@
 from asyncpg import Pool
 
-from warmhouse.ms_auth.app import DEPS
+from warmhouse.ms_auth.utils import DEPS
 
 
 def get_db() -> Pool:

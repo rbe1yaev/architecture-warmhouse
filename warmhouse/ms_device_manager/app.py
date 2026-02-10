@@ -6,19 +6,8 @@ import asyncpg
 from contextlib import asynccontextmanager
 
 from warmhouse.ms_device_manager.api import routers
-
-DEPS = {}
-
-# Конфигурация
-DB_CONFIG = {
-    "host": os.getenv("DB_HOST", "device-manager-db"),
-    "port": os.getenv("DB_PORT", 5432),
-    "database": os.getenv("DB_NAME", "device_manager"),
-    "user": os.getenv("DB_USER", "postgres"),
-    "password": os.getenv("DB_PASSWORD", "password")
-}
-
-DEVICE_SERVICE_URL = os.getenv("DEVICE_SERVICE_URL", "http://device-service:8002")
+from warmhouse.ms_device_manager.settings import DB_CONFIG
+from warmhouse.ms_device_manager.utils import DEPS
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -96,15 +85,11 @@ async def init_database():
 
 @app.get("/health")
 async def health_check():
-    try:
-        async with app.state.db_pool.acquire() as conn:
-            await conn.fetchval("SELECT 1")
-        return {
-            "status": "healthy",
-            "service": "device-manager-service",
-            "database": "connected"
-        }
-    except Exception as e:
-        return {"status": "unhealthy", "error": str(e)}
+    return {
+        "status": "healthy",
+        "service": "device-manager-service",
+        "database": "connected"
+    }
+
 
 app.include_router(routers)

@@ -7,7 +7,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from starlette import status
 
 from warmhouse.lib.models import Token
-from warmhouse.ms_auth.app import oauth2_scheme, ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM
+from warmhouse.ms_auth.utils import oauth2_scheme
+from warmhouse.ms_auth.settings import ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM
 from warmhouse.ms_auth.depends.dependencies import get_db
 from warmhouse.ms_auth.services.auth import get_current_user, create_access_token, get_user_by_email, authenticate_user
 from warmhouse.ms_auth.utils import get_password_hash

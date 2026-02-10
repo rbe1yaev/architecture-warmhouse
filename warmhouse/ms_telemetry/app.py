@@ -5,11 +5,8 @@ import aiohttp
 from contextlib import asynccontextmanager
 
 from warmhouse.ms_telemetry.api import routers
+from warmhouse.ms_telemetry.settings import CLICKHOUSE_URL
 from warmhouse.ms_telemetry.utils import execute_clickhouse_query
-
-# Конфигурация
-CLICKHOUSE_URL = f"http://{os.getenv('CLICKHOUSE_HOST', 'clickhouse')}:8123"
-CLICKHOUSE_DB = os.getenv('CLICKHOUSE_DB', 'telemetry')
 
 
 logging.basicConfig(level=logging.INFO)

@@ -1,6 +1,6 @@
 from asyncpg import Pool
 
-from warmhouse.ms_device.app import DEPS
+from warmhouse.ms_device_manager.utils import DEPS
 
 
 def get_db() -> Pool:

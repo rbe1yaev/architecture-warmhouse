@@ -4,13 +4,6 @@ info:
   version: 1.0.0
   description: |
     Микросервис для управления сценариями работы устройств и автоматизацией в системе умного дома.
-    Обеспечивает выполнение сценариев, взаимодействие с устройствами и проверку статусов.
-    
-    **Основные функции:**
-    - Управление сценариями автоматизации
-    - Выполнение команд устройств по сценариям
-    - Проверка состояний устройств для выполнения условий
-    - Логирование выполнения сценариев
 
 servers:
   - url: http://device-manager:8000
@@ -30,7 +23,6 @@ tags:
 
 paths:
 
-  # === Health Check ===
   /health:
     get:
       tags: [Health]
@@ -49,7 +41,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  # === Управление сценариями ===
   /scenarios:
     get:
       tags: [Scenarios]
@@ -214,7 +205,6 @@ paths:
         '404':
           description: Сценарий не найден
 
-  # === Выполнение сценариев ===
   /scenarios/{scenario_id}/execute:
     post:
       tags: [Execution]
@@ -295,7 +285,6 @@ paths:
         '409':
           description: Нельзя отменить завершенное выполнение
 
-  # === Проверка статусов устройств ===
   /status/device/{device_id}:
     get:
       tags: [Status]
@@ -336,30 +325,6 @@ paths:
                 items:
                   $ref: '#/components/schemas/ScenarioStatus'
 
-  # === Внутренние эндпоинты для других микросервисов ===
-  /internal/trigger:
-    post:
-      tags: [Execution]
-      summary: Запуск сценария по триггеру (внутренний)
-      description: |
-        Внутренний эндпоинт для запуска сценариев по событиям от других сервисов.
-        Используется Telemetry Service при изменении состояния устройств.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TriggerRequest'
-      responses:
-        '202':
-          description: Триггер обработан, сценарии запущены
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TriggerResponse'
-        '400':
-          description: Неверный формат триггера
-
 components:
   securitySchemes:
     internalToken:
@@ -369,8 +334,6 @@ components:
       description: Токен для внутреннего взаимодействия между микросервисами
 
   schemas:
-
-    # === Health ===
     HealthStatus:
       type: object
       properties:
@@ -386,7 +349,6 @@ components:
         version:
           type: string
 
-    # === Сценарии ===
     Scenario:
       type: object
       required:
@@ -495,14 +457,13 @@ components:
         config:
           type: object
           properties:
-            # Для триггера времени
             cron_expression:
               type: string
               example: "0 7 * * *"
             time:
               type: string
               format: time
-            # Для триггера состояния устройства
+
             device_id:
               type: string
             condition:
@@ -510,7 +471,7 @@ components:
               enum: [equals, greater_than, less_than, changed]
             value:
               type: string
-            # Для температурного триггера
+
             sensor_id:
               type: string
             threshold:
@@ -542,7 +503,6 @@ components:
           minimum: 0
           default: 3
 
-    # === Выполнение сценариев ===
     ExecutionRequest:
       type: object
       properties:
@@ -635,7 +595,6 @@ components:
         error:
           type: string
 
-    # === Статусы ===
     DeviceStatus:
       type: object
       properties:
@@ -674,7 +633,6 @@ components:
           type: string
           enum: [success, failed, cancelled]
 
-    # === Внутренние запросы ===
     TriggerRequest:
       type: object
       required:
@@ -714,7 +672,6 @@ components:
         total_triggered:
           type: integer
 
-    # === Общие схемы ===
     PaginationInfo:
       type: object
       properties:

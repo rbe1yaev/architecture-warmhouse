@@ -7,7 +7,7 @@ from typing import Optional, Dict
 
 import httpx
 
-from warmhouse.ms_device_manager.app import DEVICE_SERVICE_URL
+from warmhouse.ms_device_manager.settings import DEVICE_SERVICE_URL
 from warmhouse.ms_device_manager.depends.dependencies import get_client, get_db
 
 logger = logging.getLogger(__name__)

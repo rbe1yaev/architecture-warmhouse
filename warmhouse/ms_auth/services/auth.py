@@ -5,9 +5,9 @@ import jwt
 from fastapi import HTTPException, Depends
 from starlette import status
 
-from warmhouse.ms_auth.app import SECRET_KEY, ALGORITHM, oauth2_scheme
+from warmhouse.ms_auth.settings import SECRET_KEY, ALGORITHM
 from warmhouse.ms_auth.depends.dependencies import get_db
-from warmhouse.ms_auth.utils import verify_password
+from warmhouse.ms_auth.utils import verify_password, oauth2_scheme
 
 
 async def get_user_by_email(email: str, pool=Depends(get_db)):

@@ -6,9 +6,7 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 
 from warmhouse.ms_auth.depends.dependencies import get_db
-from warmhouse.ms_device.depends.dependencies import get_kafka
 from warmhouse.ms_device.dto.device import DeviceResponse, DeviceCreate, DeviceUpdate, DeviceCommand
-from warmhouse.ms_device.utils import send_kafka_event
 
 router = APIRouter(prefix="/devices")
 

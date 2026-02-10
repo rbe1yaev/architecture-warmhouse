@@ -3,7 +3,7 @@ from typing import Optional
 import httpx
 from fastapi import HTTPException
 
-from warmhouse.ms_gateway.app import SERVICES
+from warmhouse.ms_gateway.settings import SERVICES
 
 logger = logging.getLogger(__name__)
 

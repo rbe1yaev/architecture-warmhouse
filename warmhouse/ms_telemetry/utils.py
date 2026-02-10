@@ -2,8 +2,7 @@ import logging
 
 import aiohttp
 
-from warmhouse.ms_telemetry.app import CLICKHOUSE_DB, CLICKHOUSE_URL
-
+from warmhouse.ms_telemetry.settings import CLICKHOUSE_DB, CLICKHOUSE_URL
 
 logger = logging.getLogger(__name__)
 

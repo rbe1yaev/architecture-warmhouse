@@ -1,18 +1,10 @@
 from fastapi import FastAPI
 import asyncpg
 from contextlib import asynccontextmanager
-import os
 
 from warmhouse.ms_device.api import routers
-
-DEPS = {}
-DB_CONFIG = {
-    "host": os.getenv("DB_HOST", "device-db"),
-    "port": os.getenv("DB_PORT", 5432),
-    "database": os.getenv("DB_NAME", "device_service"),
-    "user": os.getenv("DB_USER", "postgres"),
-    "password": os.getenv("DB_PASSWORD", "password")
-}
+from warmhouse.ms_device.depends.dependencies import DEPS
+from warmhouse.ms_device.settings import DB_CONFIG
 
 
 
@@ -52,9 +44,9 @@ async def init_db():
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
 
-        CREATE INDEX idx_device_type ON devices(device_type);
-        CREATE INDEX idx_device_status ON devices(status);
-        CREATE INDEX idx_device_location ON devices(location);
+        CREATE INDEX IF NOT EXISTS idx_device_type ON devices(device_type);
+        CREATE INDEX IF NOT EXISTS idx_device_status ON devices(status);
+        CREATE INDEX IF NOT EXISTS idx_device_location ON devices(location);
     """)
 
     await conn.close()

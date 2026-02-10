@@ -1,0 +1,51 @@
+@startuml
+!include <C4/C4_Container>
+
+
+title C4 container for Smart House
+
+Person(customer, "Customer", "A person who wants to check temperature from sensors.")
+
+System_Boundary(c1, "Smart House System") {
+    Container(web_app, "Web Application", "React", "Provides an interface for selecting products")
+    Container(gateway, "Gateway", "Python, FastAPI", "Handles business logic via JSON/HTTPS")
+    System_Boundary(c2, "Authorization Service") {
+        Container(auth, "Authorization", "Python, FastAPI", "Handles user login to the application via JSON/HTTPS")
+        ContainerDb(db_auth, "Database Auth", "PostgreSQL", "Stores user data")
+    }
+    System_Boundary(c3, "Device Manager Service") {
+        Container(device_manager, "Device Manager", "Python, FastAPI", "Handles business logic for executing device operation scenarios via JSON/HTTPS")
+        ContainerDb(db_device_manager, "Database Device Manager", "PostgreSQL", "Stores device operation scenario data")
+    }
+    System_Boundary(c4, "Device Service") {
+        Container(device, "Device", "Python, FastAPI", "Handles business logic for device connection via JSON/HTTPS")
+        ContainerDb(db_device, "Database Device", "PostgreSQL", "Stores connected device data")
+    }
+    System_Boundary(c5, "Telemetry Service") {
+        Container(telemetry, "Telemetry", "Python, FastAPI", "Handles business logic for remote collection, transmission and analysis of state data")
+        ContainerDb(db_telemetry, "Database Telemetry", "ClickHouse", "Stores collection history data")
+    }
+    Container(pusher, "Pusher", "Python, FastAPI", "Handles notification sending logic")
+    ContainerQueue(queue, "Kafka")
+}
+System_Ext(pusher_api, "Pusher API", "External pusher system for WebSocket connections.")
+
+
+'Связи
+Rel(customer, web_app, "Accesses via", "HTTPS")
+Rel(web_app, gateway, "Sends API requests", "HTTPS/JSON")
+Rel(gateway, auth, "Validates authentication tokens", "HTTPS/JSON")
+Rel(auth, db_auth, "Reads/Writes auth data", "SQL")
+Rel(gateway, device_manager, "Routes device management requests", "HTTPS/JSON")
+Rel(device_manager, device, "Sends device control commands", "HTTPS/JSON")
+Rel(device_manager, db_device_manager, "Reads/Writes scenario data", "SQL")
+Rel(device_manager, telemetry, "Requests device status data", "HTTPS/JSON")
+Rel(device, db_device, "Reads/Writes device information", "SQL")
+Rel(gateway, telemetry, "Requests telemetry data", "HTTPS/JSON")
+Rel(telemetry, db_telemetry, "Stores telemetry data", "SQL")
+Rel(telemetry, queue, "Publishes telemetry events", "HTTPS")
+Rel(queue, pusher, "Consumes notification events", "HTTPS")
+Rel(pusher, pusher_api, "Send events data", "HTTPS/JSON")
+Rel(pusher_api, web_app, "Frontend subscribes to events\nand displays notifications", "WebSocket")
+
+@enduml

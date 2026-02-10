@@ -1,0 +1,66 @@
+@startuml
+title CommandProcessor class diagram
+
+
+enum DeviceStatus {
+    ONLINE
+    OFFLINE
+}
+
+class ScenarioStep {
+    - step_id: int
+    - device_id: Optional[str]
+    - action: str
+    - params: Dict[str, Any]
+    - delay: Optional[int]
+}
+
+
+class Scenario {
+    - id: str
+    - name: str
+    - steps: List[ScenarioStep]
+}
+
+
+class DeviceServiceClient {
+    - base_url: str
+    + send_command(device_id: str, action: str, params: Dict): Dict
+}
+
+
+class StatusManager {
+    - status_cache: Dict
+    + get_status(device_id: str): DeviceStatus
+    + update_status(device_id: str, status: DeviceStatus)
+}
+
+
+class ScenarioRepository {
+    - scenarios: Dict[str, Scenario]
+    + get_scenario(scenario_id: str): Optional[Scenario]
+}
+
+
+class CommandProcessor {
+    - device_client: DeviceServiceClient
+    - status_manager: StatusManager
+    - scenario_repo: ScenarioRepository
+    + execute_scenario(scenario_id: str, user_id: str): bool
+    - _execute_step(step: ScenarioStep)
+}
+
+
+class ScenarioController {
+    - processor: CommandProcessor
+    + start_scenario(scenario_id: str, user_id: str): Dict
+}
+
+
+ScenarioController --> CommandProcessor
+CommandProcessor --> DeviceServiceClient
+CommandProcessor --> StatusManager
+CommandProcessor --> ScenarioRepository
+Scenario o-- "many" ScenarioStep
+
+@enduml

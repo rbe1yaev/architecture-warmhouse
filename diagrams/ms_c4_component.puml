@@ -1,0 +1,33 @@
+@startuml
+'https://plantuml.com/component-diagram
+!include <C4/C4_Component>
+
+title C4 Component Diagram: Device Manager Service
+
+Container(gateway, "Gateway", "Python, FastAPI", "Request routing and aggregation")
+Container(device_manager, "Device Manager", "Python, FastAPI", "Handles business logic for device operation scenarios")
+ContainerDb(db_device_manager, "Device Manager Database", "PostgreSQL", "Stores device operation scenario data")
+Container(device_service, "Device Service", "Python, FastAPI", "Connected device management")
+Container(telemetry_service, "Telemetry Service", "Python, FastAPI", "State data collection and analysis")
+
+Component(device_manager, "API Gateway", "FastAPI", "External REST API for scenario management") {
+    Component(api, "Scenario API", "FastAPI Router", "Receives commands: start/stop scenarios")
+    Component(command, "Command Processor", "Scenario handler", "Interprets and executes command sequences for devices")
+    Component(status, "Device Status Manager", "State manager", "Caches and checks current device states for scenarios")
+    ComponentDb(repo, "Scenario Repository", "SQLAlchemy", "Access to scenario data and steps in database")
+}
+
+Rel(gateway, api, "JSON/HTTPS\n(start scenario)", "API")
+Rel(api, command, "scenario_id, params", "internal call")
+Rel(command, status, "Check device status\nby device_id", "internal call")
+Rel(command, repo, "Get scenario steps\nby scenario_id", "SQL")
+Rel(command, device_service, "JSON/HTTPS\n(turn on/off device)", "API")
+Rel(status, telemetry_service, "Get device status", "JSON/HTTPS")
+Rel(repo, db_device_manager, "Read/Write", "SQL, SQLAlchemy")
+
+' Layout improvements
+Lay_D(api, command)
+Lay_R(command, status)
+Lay_D(status, telemetry_service)
+
+@enduml

@@ -1,0 +1,134 @@
+@startuml
+title ER Diagram for Smart House
+
+package "Authorization Service" {
+  entity "users" {
+    + id : UUID <<PK>>
+    --
+    username : VARCHAR(50) <<UK>>
+    email : VARCHAR(100) <<UK>>
+    password_hash : VARCHAR(255)
+    created_at : TIMESTAMP
+    updated_at : TIMESTAMP
+  }
+
+  entity "user_sessions" {
+    + id : UUID <<PK>>
+    --
+    user_id : UUID <<FK>>
+    token : VARCHAR(500)
+    expires_at : TIMESTAMP
+    created_at : TIMESTAMP
+  }
+
+  users ||--o{ user_sessions : "has"
+}
+
+package "Device Service" {
+  entity "device_types" {
+    + id : UUID <<PK>>
+    --
+    name : VARCHAR(100)
+    description : TEXT
+    additional_data : JSONB
+  }
+
+  entity "devices" {
+    + id : UUID <<PK>>
+    --
+    device_type_id : UUID <<FK>>
+    user_id : UUID <<FK>>
+    name : VARCHAR(100)
+    serial_number : VARCHAR(100) <<UK>>
+    status : ENUM('online', 'offline', 'error')
+    created_at : TIMESTAMP
+    updated_at : TIMESTAMP
+    additional_data : JSONB
+  }
+
+  entity "device_tokens" {
+    + id : UUID <<PK>>
+    --
+    device_id : UUID <<FK>>
+    token : VARCHAR(500)
+    expires_at : TIMESTAMP
+    created_at : TIMESTAMP
+  }
+
+  device_types ||--o{ devices : "type_of"
+  devices ||--o{ device_tokens : "authenticates_with"
+}
+
+package "Device Manager Service" {
+  entity "scenarios" {
+    + id : UUID <<PK>>
+    --
+    user_id : UUID <<FK>>
+    name : VARCHAR(100)
+    description : TEXT
+    is_active : BOOLEAN
+    trigger_type : ENUM('time', 'sensor', 'manual')
+    additional_data : JSONB
+    created_at : TIMESTAMP
+    updated_at : TIMESTAMP
+  }
+
+  entity "scenario_actions" {
+    + id : UUID <<PK>>
+    --
+    scenario_id : UUID <<FK>>
+    device_id : UUID <<FK>>
+    action_type : VARCHAR(50)
+    additional_data : JSONB
+    execution_order : INTEGER
+  }
+
+  entity "scenario_executions" {
+    + id : UUID <<PK>>
+    --
+    scenario_id : UUID <<FK>>
+    status : ENUM('pending', 'running', 'completed', 'failed')
+    created_at : TIMESTAMP
+    completed_at : TIMESTAMP
+    error_message : TEXT
+  }
+
+  scenarios ||--o{ scenario_actions : "contains"
+  scenarios ||--o{ scenario_executions : "executes"
+}
+
+package "Telemetry Service" {
+  entity "telemetry" {
+    + device_id : UUID <<PK>>
+    + timestamp : TIMESTAMP <<PK>>
+    --
+    temperature : FLOAT
+    humidity : FLOAT
+    power_consumption : FLOAT
+    signal_strength : INTEGER
+    additional_data : JSONB
+  }
+
+  entity "telemetry_alerts" {
+    + id : UUID <<PK>>
+    --
+    device_id : UUID <<FK>>
+    alert_type : VARCHAR(50)
+    threshold : FLOAT
+    triggered_value : FLOAT
+    severity : ENUM('info', 'warning', 'critical')
+    triggered_at : TIMESTAMP
+    acknowledged : BOOLEAN
+    acknowledged_at : TIMESTAMP
+  }
+
+  telemetry_data }o--|| telemetry_alerts : "may_trigger"
+}
+' 1 to many
+users ||--o{ devices : "owns"
+users ||--o{ scenarios : "creates"
+' many to many
+devices }o--o{ telemetry_data : "produces"
+devices }o--o{ scenario_actions : "controlled_by"
+
+@enduml

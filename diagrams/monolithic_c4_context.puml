@@ -1,0 +1,16 @@
+@startuml
+!include <C4/C4_Context>
+
+title System Context Diagram for Smart House
+
+Person(customer, "Customer", "A person who wants to check temperature from sensors.")
+System(smart_house, "Smart House System", "Allows customers to view temperature data from heating sensors.")
+System_Ext(heating_system, "Heating System", "External heating system with temperature sensors and controls.")
+
+Rel(customer, smart_house, "Views temperature data", "HTTPS")
+Rel(smart_house, heating_system, "Requests temperature data", "JSON/HTTPS")
+Rel_Back(heating_system, smart_house, "Sends temperature data", "JSON/HTTPS")
+
+
+
+@enduml

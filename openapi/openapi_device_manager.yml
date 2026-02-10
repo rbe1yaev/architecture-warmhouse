@@ -1,0 +1,743 @@
+openapi: 3.0.3
+info:
+  title: Device Manager Service API
+  version: 1.0.0
+  description: |
+    Микросервис для управления сценариями работы устройств и автоматизацией в системе умного дома.
+    Обеспечивает выполнение сценариев, взаимодействие с устройствами и проверку статусов.
+    
+    **Основные функции:**
+    - Управление сценариями автоматизации
+    - Выполнение команд устройств по сценариям
+    - Проверка состояний устройств для выполнения условий
+    - Логирование выполнения сценариев
+
+servers:
+  - url: http://device-manager:8000
+    description: Внутренний сервер Device Manager
+  - url: http://api-gateway:8080/internal/device-manager
+    description: Через API Gateway (внутренний роутинг)
+
+tags:
+  - name: Scenarios
+    description: Управление сценариями автоматизации
+  - name: Execution
+    description: Выполнение сценариев и команд
+  - name: Status
+    description: Проверка статусов устройств и сценариев
+  - name: Health
+    description: Проверка здоровья сервиса
+
+paths:
+
+  # === Health Check ===
+  /health:
+    get:
+      tags: [Health]
+      summary: Проверка состояния сервиса
+      responses:
+        '200':
+          description: Сервис работает корректно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '503':
+          description: Сервис недоступен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # === Управление сценариями ===
+  /scenarios:
+    get:
+      tags: [Scenarios]
+      summary: Получить список всех сценариев
+      parameters:
+        - name: enabled
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Фильтр по включенным сценариям
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+          description: Количество возвращаемых записей
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Список сценариев
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioList'
+        '500':
+          description: Внутренняя ошибка сервера
+
+    post:
+      tags: [Scenarios]
+      summary: Создать новый сценарий
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScenarioCreate'
+      responses:
+        '201':
+          description: Сценарий успешно создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
+        '400':
+          description: Неверные данные сценария
+        '409':
+          description: Сценарий с таким именем уже существует
+
+  /scenarios/{scenario_id}:
+    get:
+      tags: [Scenarios]
+      summary: Получить сценарий по ID
+      parameters:
+        - name: scenario_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Информация о сценарии
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
+        '404':
+          description: Сценарий не найден
+
+    put:
+      tags: [Scenarios]
+      summary: Обновить сценарий
+      parameters:
+        - name: scenario_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScenarioUpdate'
+      responses:
+        '200':
+          description: Сценарий успешно обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
+        '404':
+          description: Сценарий не найден
+        '400':
+          description: Неверные данные для обновления
+
+    delete:
+      tags: [Scenarios]
+      summary: Удалить сценарий
+      parameters:
+        - name: scenario_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Сценарий успешно удален
+        '404':
+          description: Сценарий не найден
+        '409':
+          description: Нельзя удалить запущенный сценарий
+
+  /scenarios/{scenario_id}/enable:
+    post:
+      tags: [Scenarios]
+      summary: Включить сценарий
+      parameters:
+        - name: scenario_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Сценарий включен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
+        '404':
+          description: Сценарий не найден
+
+  /scenarios/{scenario_id}/disable:
+    post:
+      tags: [Scenarios]
+      summary: Выключить сценарий
+      parameters:
+        - name: scenario_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Сценарий выключен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
+        '404':
+          description: Сценарий не найден
+
+  # === Выполнение сценариев ===
+  /scenarios/{scenario_id}/execute:
+    post:
+      tags: [Execution]
+      summary: Выполнить сценарий
+      description: |
+        Запускает выполнение сценария. Если сценарий требует параметры, они должны быть переданы в теле запроса.
+        Возвращает ID выполнения для отслеживания статуса.
+      parameters:
+        - name: scenario_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecutionRequest'
+      responses:
+        '202':
+          description: Сценарий принят к выполнению
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionResponse'
+        '400':
+          description: Сценарий не может быть выполнен (не хватает параметров)
+        '404':
+          description: Сценарий не найден
+        '409':
+          description: Сценарий уже выполняется
+        '422':
+          description: Условия для выполнения сценария не выполнены
+
+  /executions/{execution_id}:
+    get:
+      tags: [Execution]
+      summary: Получить статус выполнения сценария
+      parameters:
+        - name: execution_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Статус выполнения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionStatus'
+        '404':
+          description: Выполнение не найдено
+
+  /executions/{execution_id}/cancel:
+    post:
+      tags: [Execution]
+      summary: Отменить выполнение сценария
+      parameters:
+        - name: execution_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Выполнение отменено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionStatus'
+        '404':
+          description: Выполнение не найдено
+        '409':
+          description: Нельзя отменить завершенное выполнение
+
+  # === Проверка статусов устройств ===
+  /status/device/{device_id}:
+    get:
+      tags: [Status]
+      summary: Проверить статус устройства
+      description: |
+        Проверяет текущий статус устройства, необходимый для выполнения условий сценариев.
+        Использует кэшированные данные или запрашивает у Telemetry Service.
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Статус устройства
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceStatus'
+        '404':
+          description: Устройство не найдено
+        '503':
+          description: Сервис телеметрии недоступен
+
+  /status/scenarios:
+    get:
+      tags: [Status]
+      summary: Получить статусы всех сценариев
+      description: Возвращает текущий статус выполнения всех сценариев
+      responses:
+        '200':
+          description: Статусы сценариев
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ScenarioStatus'
+
+  # === Внутренние эндпоинты для других микросервисов ===
+  /internal/trigger:
+    post:
+      tags: [Execution]
+      summary: Запуск сценария по триггеру (внутренний)
+      description: |
+        Внутренний эндпоинт для запуска сценариев по событиям от других сервисов.
+        Используется Telemetry Service при изменении состояния устройств.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TriggerRequest'
+      responses:
+        '202':
+          description: Триггер обработан, сценарии запущены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TriggerResponse'
+        '400':
+          description: Неверный формат триггера
+
+components:
+  securitySchemes:
+    internalToken:
+      type: http
+      scheme: bearer
+      bearerFormat: token
+      description: Токен для внутреннего взаимодействия между микросервисами
+
+  schemas:
+
+    # === Health ===
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        database:
+          type: string
+          enum: [connected, disconnected]
+        version:
+          type: string
+
+    # === Сценарии ===
+    Scenario:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - trigger
+        - actions
+        - enabled
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        name:
+          type: string
+          example: "Утренний режим"
+        description:
+          type: string
+          example: "Включение света и подогрев к 7 утра"
+        trigger:
+          $ref: '#/components/schemas/ScenarioTrigger'
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScenarioAction'
+        enabled:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        last_executed:
+          type: string
+          format: date-time
+          nullable: true
+
+    ScenarioCreate:
+      type: object
+      required:
+        - name
+        - trigger
+        - actions
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        trigger:
+          $ref: '#/components/schemas/ScenarioTrigger'
+        actions:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ScenarioAction'
+        enabled:
+          type: boolean
+          default: true
+
+    ScenarioUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 3
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        trigger:
+          $ref: '#/components/schemas/ScenarioTrigger'
+        actions:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ScenarioAction'
+        enabled:
+          type: boolean
+
+    ScenarioList:
+      type: object
+      properties:
+        total:
+          type: integer
+        scenarios:
+          type: array
+          items:
+            $ref: '#/components/schemas/Scenario'
+        pagination:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    ScenarioTrigger:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [time, device_state, temperature, manual, api]
+        config:
+          type: object
+          properties:
+            # Для триггера времени
+            cron_expression:
+              type: string
+              example: "0 7 * * *"
+            time:
+              type: string
+              format: time
+            # Для триггера состояния устройства
+            device_id:
+              type: string
+            condition:
+              type: string
+              enum: [equals, greater_than, less_than, changed]
+            value:
+              type: string
+            # Для температурного триггера
+            sensor_id:
+              type: string
+            threshold:
+              type: number
+            operator:
+              type: string
+              enum: [gt, lt, gte, lte]
+
+    ScenarioAction:
+      type: object
+      required:
+        - device_id
+        - command
+      properties:
+        device_id:
+          type: string
+        command:
+          type: string
+          example: "turn_on"
+        parameters:
+          type: object
+          additionalProperties: true
+        delay_seconds:
+          type: integer
+          minimum: 0
+          default: 0
+        retry_count:
+          type: integer
+          minimum: 0
+          default: 3
+
+    # === Выполнение сценариев ===
+    ExecutionRequest:
+      type: object
+      properties:
+        parameters:
+          type: object
+          additionalProperties: true
+          description: Параметры для выполнения сценария
+        force:
+          type: boolean
+          default: false
+          description: Принудительное выполнение без проверки условий
+
+    ExecutionResponse:
+      type: object
+      properties:
+        execution_id:
+          type: string
+          format: uuid
+        scenario_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, running, completed, failed, cancelled]
+        started_at:
+          type: string
+          format: date-time
+        estimated_duration:
+          type: integer
+          description: Примерная длительность выполнения в секундах
+
+    ExecutionStatus:
+      type: object
+      properties:
+        execution_id:
+          type: string
+          format: uuid
+        scenario_id:
+          type: string
+          format: uuid
+        scenario_name:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, completed, failed, cancelled]
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        current_step:
+          type: integer
+        total_steps:
+          type: integer
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        result:
+          type: object
+          properties:
+            success:
+              type: boolean
+            message:
+              type: string
+            error_details:
+              type: string
+            executed_actions:
+              type: array
+              items:
+                $ref: '#/components/schemas/ExecutedAction'
+
+    ExecutedAction:
+      type: object
+      properties:
+        device_id:
+          type: string
+        command:
+          type: string
+        status:
+          type: string
+          enum: [pending, success, failed]
+        executed_at:
+          type: string
+          format: date-time
+        response:
+          type: object
+        error:
+          type: string
+
+    # === Статусы ===
+    DeviceStatus:
+      type: object
+      properties:
+        device_id:
+          type: string
+        status:
+          type: string
+          enum: [online, offline, error]
+        last_update:
+          type: string
+          format: date-time
+        metrics:
+          type: object
+          additionalProperties: true
+        cached:
+          type: boolean
+          description: Флаг, указывающий что данные взяты из кэша
+
+    ScenarioStatus:
+      type: object
+      properties:
+        scenario_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        enabled:
+          type: boolean
+        is_running:
+          type: boolean
+        last_execution:
+          type: string
+          format: date-time
+          nullable: true
+        last_status:
+          type: string
+          enum: [success, failed, cancelled]
+
+    # === Внутренние запросы ===
+    TriggerRequest:
+      type: object
+      required:
+        - event_type
+        - source
+        - timestamp
+      properties:
+        event_type:
+          type: string
+          enum: [device_status_changed, temperature_threshold, time_event, manual_trigger]
+        source:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        data:
+          type: object
+          properties:
+            device_id:
+              type: string
+            old_value:
+              type: string
+            new_value:
+              type: string
+            metric_name:
+              type: string
+            metric_value:
+              type: number
+
+    TriggerResponse:
+      type: object
+      properties:
+        triggered_scenarios:
+          type: array
+          items:
+            $ref: '#/components/schemas/Scenario'
+        total_triggered:
+          type: integer
+
+    # === Общие схемы ===
+    PaginationInfo:
+      type: object
+      properties:
+        limit:
+          type: integer
+        offset:
+          type: integer
+        total:
+          type: integer
+        has_more:
+          type: boolean
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+        timestamp:
+          type: string
+          format: date-time

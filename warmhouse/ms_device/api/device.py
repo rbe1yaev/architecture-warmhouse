@@ -10,6 +10,7 @@ from warmhouse.ms_device.dto.device import DeviceResponse, DeviceCreate, DeviceU
 
 router = APIRouter(prefix="/devices")
 
+
 @router.get("", response_model=List[DeviceResponse])
 async def get_devices(
         pool=Depends(get_db),
@@ -51,7 +52,7 @@ async def get_devices(
 
 
 @router.get("/{device_id}", response_model=DeviceResponse)
-async def get_device(device_id: str,  pool=Depends(get_db),):
+async def get_device(device_id: str, pool=Depends(get_db)):
     async with pool.acquire() as conn:
         row = await conn.fetchrow("SELECT * FROM devices WHERE id = $1", device_id)
         if not row:
@@ -60,7 +61,7 @@ async def get_device(device_id: str,  pool=Depends(get_db),):
 
 
 @router.post("", response_model=DeviceResponse, status_code=201)
-async def create_device(device: DeviceCreate,  pool=Depends(get_db)):
+async def create_device(device: DeviceCreate, pool=Depends(get_db)):
     device_id = str(uuid.uuid4())
     now = datetime.utcnow()
 
@@ -86,8 +87,8 @@ async def create_device(device: DeviceCreate,  pool=Depends(get_db)):
     }
 
 
-@router.patch("/devices/{device_id}", response_model=DeviceResponse)
-async def update_device(device_id: str, update: DeviceUpdate, pool=Depends(get_db), ):
+@router.patch("/{device_id}", response_model=DeviceResponse)
+async def update_device(device_id: str, update: DeviceUpdate, pool=Depends(get_db)):
     async with pool.acquire() as conn:
         # Проверяем существование устройства
         existing = await conn.fetchrow("SELECT * FROM devices WHERE id = $1", device_id)
@@ -124,7 +125,17 @@ async def update_device(device_id: str, update: DeviceUpdate, pool=Depends(get_d
         return dict(updated)
 
 
-@router.post("/devices/{device_id}/command")
+@router.delete("/{device_id}")
+async def delete_device(device_id: str, pool=Depends(get_db)):
+    async with pool.acquire() as conn:
+        result = await conn.execute("DELETE FROM devices WHERE id = $1", device_id)
+        # result like "DELETE 1"
+        if result.split()[-1] == "0":
+            raise HTTPException(status_code=404, detail="Device not found")
+    return {"message": "Device deleted successfully"}
+
+
+@router.post("/{device_id}/command")
 async def send_command(device_id: str, command: DeviceCommand, pool=Depends(get_db)):
     async with pool.acquire() as conn:
         device = await conn.fetchrow("SELECT * FROM devices WHERE id = $1", device_id)

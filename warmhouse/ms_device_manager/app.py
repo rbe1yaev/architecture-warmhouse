@@ -1,9 +1,9 @@
-from fastapi import FastAPI
-import os
 import logging
-import httpx
-import asyncpg
 from contextlib import asynccontextmanager
+
+import asyncpg
+import httpx
+from fastapi import FastAPI
 
 from warmhouse.ms_device_manager.api import routers
 from warmhouse.ms_device_manager.settings import DB_CONFIG
@@ -33,7 +33,7 @@ app = FastAPI(
     title="Device Manager Service",
     description="Управление сценариями и автоматизацией устройств",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 
@@ -44,7 +44,7 @@ async def init_database():
         port=DB_CONFIG["port"],
         user=DB_CONFIG["user"],
         password=DB_CONFIG["password"],
-        database=DB_CONFIG["database"]
+        database=DB_CONFIG["database"],
     )
 
     await conn.execute("""
@@ -85,11 +85,7 @@ async def init_database():
 
 @app.get("/health")
 async def health_check():
-    return {
-        "status": "healthy",
-        "service": "device-manager-service",
-        "database": "connected"
-    }
+    return {"status": "healthy", "service": "device-manager-service", "database": "connected"}
 
 
 app.include_router(routers)

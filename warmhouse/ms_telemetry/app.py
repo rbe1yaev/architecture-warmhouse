@@ -1,13 +1,12 @@
-from fastapi import FastAPI
-import os
 import logging
-import aiohttp
 from contextlib import asynccontextmanager
+
+import aiohttp
+from fastapi import FastAPI
 
 from warmhouse.ms_telemetry.api import routers
 from warmhouse.ms_telemetry.settings import CLICKHOUSE_URL
 from warmhouse.ms_telemetry.utils import execute_clickhouse_query
-
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -34,8 +33,6 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
-
-
 
 
 @app.get("/health")

@@ -1,4 +1,4 @@
-from fastapi import Depends, Request, HTTPException
+from fastapi import Depends, HTTPException, Request
 
 from warmhouse.ms_gateway.services.client import ServiceClient
 
@@ -15,8 +15,7 @@ async def validate_token(request: Request, client: ServiceClient = Depends(get_s
 
     token = auth_header.split(" ")[1]
     try:
-        response = await client._make_request("auth", "POST", "/internal/validate",
-                                              {"token": token})
+        response = await client._make_request("auth", "POST", "/internal/validate", {"token": token})
         if response.status_code != 200:
             raise HTTPException(status_code=401, detail="Invalid token")
 

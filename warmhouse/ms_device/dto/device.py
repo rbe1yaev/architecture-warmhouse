@@ -1,9 +1,9 @@
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel
 
-from warmhouse.lib.models import DeviceType, DeviceStatus
+from warmhouse.lib.models import DeviceStatus, DeviceType
 
 
 class DeviceCreate(BaseModel):

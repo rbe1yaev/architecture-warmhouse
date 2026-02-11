@@ -1,9 +1,7 @@
-from fastapi import FastAPI
-from fastapi.security import OAuth2PasswordBearer
-from passlib.context import CryptContext
-import asyncpg
 from contextlib import asynccontextmanager
-import os
+
+import asyncpg
+from fastapi import FastAPI
 
 from warmhouse.ms_auth.api import routers
 from warmhouse.ms_auth.settings import DB_CONFIG
@@ -23,7 +21,7 @@ app = FastAPI(
     title="Authentication Service",
     description="Сервис аутентификации и авторизации",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 
@@ -57,5 +55,6 @@ async def init_db():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
 
 app.include_router(routers)

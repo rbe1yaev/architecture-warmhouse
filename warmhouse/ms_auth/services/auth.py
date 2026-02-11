@@ -2,12 +2,12 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 import jwt
-from fastapi import HTTPException, Depends
+from fastapi import Depends, HTTPException
 from starlette import status
 
-from warmhouse.ms_auth.settings import SECRET_KEY, ALGORITHM
 from warmhouse.ms_auth.depends.dependencies import get_db
-from warmhouse.ms_auth.utils import verify_password, oauth2_scheme
+from warmhouse.ms_auth.settings import ALGORITHM, SECRET_KEY
+from warmhouse.ms_auth.utils import oauth2_scheme, verify_password
 
 
 async def get_user_by_email(email: str, pool=Depends(get_db)):
@@ -25,7 +25,6 @@ async def authenticate_user(email: str, password: str):
     return user
 
 
-
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
@@ -35,7 +34,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.JWT().encode(payload=to_encode, key=SECRET_KEY, alg=ALGORITHM)
     return encoded_jwt
-
 
 
 async def get_user_by_id(user_id: str, pool=Depends(get_db)):

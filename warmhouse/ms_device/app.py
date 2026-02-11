@@ -1,11 +1,11 @@
-from fastapi import FastAPI
-import asyncpg
 from contextlib import asynccontextmanager
+
+import asyncpg
+from fastapi import FastAPI
 
 from warmhouse.ms_device.api import routers
 from warmhouse.ms_device.depends.dependencies import DEPS
 from warmhouse.ms_device.settings import DB_CONFIG
-
 
 
 @asynccontextmanager
@@ -19,12 +19,8 @@ async def lifespan(app: FastAPI):
     await db_pool.close()
 
 
-app = FastAPI(
-    title="Device Service",
-    description="Сервис управления устройствами",
-    version="1.0.0",
-    lifespan=lifespan
-)
+app = FastAPI(title="Device Service", description="Сервис управления устройствами", version="1.0.0", lifespan=lifespan)
+
 
 # Инициализация БД
 async def init_db():
@@ -51,8 +47,10 @@ async def init_db():
 
     await conn.close()
 
+
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
 
 app.include_router(routers)

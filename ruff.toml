@@ -1,0 +1,27 @@
+line-length = 120
+
+target-version = "py311"
+
+show-fixes = true
+
+[lint]
+# F — Pyflakes
+# E — Pycodestyle
+# B — flake8-bugbear
+# Q — flake8-quotes
+# I — isort
+# C — McCabe complexity
+select = ["F", "E", "B", "Q", "I", "C"]
+
+ignore = ["B008"]
+
+[lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]
+
+
+[lint.pydocstyle]
+convention = "google"
+
+
+[lint.flake8-comprehensions]
+allow-dict-calls-with-keyword-arguments = true

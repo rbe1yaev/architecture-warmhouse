@@ -1,8 +1,10 @@
-from pydantic import BaseModel, Field, validator
-from typing import Optional, List, Dict, Any
+import uuid
 from datetime import datetime
 from enum import Enum
-import uuid
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, Field
+
 
 # Enums
 class DeviceType(str, Enum):
@@ -13,10 +15,12 @@ class DeviceType(str, Enum):
     CAMERA = "camera"
     HUMIDITY_SENSOR = "humidity_sensor"
 
+
 class DeviceStatus(str, Enum):
     ONLINE = "online"
     OFFLINE = "offline"
     ERROR = "error"
+
 
 class SensorType(str, Enum):
     TEMPERATURE = "temperature"
@@ -24,11 +28,13 @@ class SensorType(str, Enum):
     PRESSURE = "pressure"
     MOTION = "motion"
 
+
 class NotificationType(str, Enum):
     INFO = "info"
     WARNING = "warning"
     ALERT = "alert"
     SUCCESS = "success"
+
 
 # Common Models
 class User(BaseModel):
@@ -40,11 +46,13 @@ class User(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
+
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int = 3600
     user_id: str
+
 
 class PaginatedResponse(BaseModel):
     items: List[Any]
@@ -52,6 +60,7 @@ class PaginatedResponse(BaseModel):
     page: int
     page_size: int
     has_next: bool
+
 
 class ErrorResponse(BaseModel):
     error: str

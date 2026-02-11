@@ -1,10 +1,9 @@
 import os
 
-
 DB_CONFIG = {
     "host": os.getenv("DB_HOST", "device-db"),
     "port": os.getenv("DB_PORT", 5432),
     "database": os.getenv("DB_NAME", "device_service"),
     "user": os.getenv("DB_USER", "postgres"),
-    "password": os.getenv("DB_PASSWORD", "password")
+    "password": os.getenv("DB_PASSWORD", "password"),
 }

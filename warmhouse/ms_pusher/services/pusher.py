@@ -1,12 +1,12 @@
 import json
 import logging
-import uuid
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict
 
 from aiokafka import AIOKafkaConsumer
 
-from warmhouse.ms_pusher.settings import KAFKA_BROKERS, FAKE_PUSHER
+from warmhouse.ms_pusher.settings import FAKE_PUSHER, KAFKA_BROKERS
+
 if FAKE_PUSHER:
     from warmhouse.ms_pusher.clients.fake.pusher import trigger_event
 else:
@@ -19,17 +19,13 @@ logger = logging.getLogger(__name__)
 async def consume_notifications():
     """Потребление уведомлений из Kafka"""
     try:
-        consumer = AIOKafkaConsumer(
-            'notifications',
-            bootstrap_servers=KAFKA_BROKERS,
-            group_id='notification-service'
-        )
+        consumer = AIOKafkaConsumer("notifications", bootstrap_servers=KAFKA_BROKERS, group_id="notification-service")
 
         await consumer.start()
 
         async for msg in consumer:
             try:
-                notification_data = json.loads(msg.value.decode('utf-8'))
+                notification_data = json.loads(msg.value.decode("utf-8"))
                 await process_kafka_notification(notification_data)
             except Exception as e:
                 logger.error(f"Error processing Kafka message: {e}")
@@ -44,7 +40,7 @@ async def process_kafka_notification(data: Dict):
             user_id=data.get("user_id", "system"),
             title=data.get("title", "Notification"),
             message=data.get("message", ""),
-            data=data.get("data")
+            data=data.get("data"),
         )
         # Отправляем через WebSocket если пользователь онлайн
         data = {
@@ -53,11 +49,10 @@ async def process_kafka_notification(data: Dict):
             "title": notification.title,
             "message": notification.message,
             "data": notification.data,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
         }
         await trigger_event("telemetry", "telemetry_data", data)
 
         logger.info(f"Processed Kafka notification for user {notification.user_id}")
     except Exception as e:
         logger.error(f"Failed to process Kafka notification: {e}")
-

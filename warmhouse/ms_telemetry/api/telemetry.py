@@ -4,7 +4,6 @@ from typing import Optional
 
 from fastapi import APIRouter, HTTPException
 
-
 from warmhouse.ms_telemetry.dto.telemetry import TelemetryData
 from warmhouse.ms_telemetry.utils import execute_clickhouse_query
 
@@ -36,7 +35,7 @@ async def save_telemetry(data: TelemetryData):
             "status": "success",
             "message": "Telemetry saved",
             "device_id": data.device_id,
-            "timestamp": data.timestamp
+            "timestamp": data.timestamp,
         }
     except Exception as e:
         logger.error(f"Failed to save telemetry: {e}")
@@ -44,10 +43,7 @@ async def save_telemetry(data: TelemetryData):
 
 
 @router.get("/latest")
-async def get_latest_telemetry(
-        device_id: Optional[str] = None,
-        limit: int = 10
-):
+async def get_latest_telemetry(device_id: Optional[str] = None, limit: int = 10):
     """Получить последние данные телеметрии"""
     try:
         if device_id:
@@ -77,11 +73,7 @@ async def get_latest_telemetry(
 
 @router.get("/history")
 async def get_telemetry_history(
-        device_id: str,
-        start_date: str,
-        end_date: Optional[str] = None,
-        interval: str = "raw",
-        limit: int = 1000
+    device_id: str, start_date: str, end_date: Optional[str] = None, interval: str = "raw", limit: int = 1000
 ):
     """Получить исторические данные телеметрии"""
     try:

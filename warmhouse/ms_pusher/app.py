@@ -1,11 +1,10 @@
-from fastapi import FastAPI
-import os
+import asyncio
 import logging
 from contextlib import asynccontextmanager
-import asyncio
+
+from fastapi import FastAPI
 
 from warmhouse.ms_pusher.services.pusher import consume_notifications
-
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -23,7 +22,7 @@ app = FastAPI(
     title="Notification Service",
     description="Сервис уведомлений и WebSocket соединений",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 
@@ -33,7 +32,6 @@ async def health_check():
         "status": "healthy",
         "database": "connected",
     }
-
 
 
 if __name__ == "__main__":

@@ -3,22 +3,22 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from warmhouse.ms_auth.depends.dependencies import get_db
-from warmhouse.ms_device.dto.device import DeviceResponse, DeviceCreate, DeviceUpdate, DeviceCommand
+from warmhouse.ms_device.dto.device import DeviceCommand, DeviceCreate, DeviceResponse, DeviceUpdate
 
 router = APIRouter(prefix="/devices")
 
 
 @router.get("", response_model=List[DeviceResponse])
 async def get_devices(
-        pool=Depends(get_db),
-        device_type: Optional[str] = None,
-        location: Optional[str] = None,
-        status: Optional[str] = None,
-        skip: int = 0,
-        limit: int = 100
+    pool=Depends(get_db),
+    device_type: Optional[str] = None,
+    location: Optional[str] = None,
+    status: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100,
 ):
     query = "SELECT * FROM devices"
     conditions = []
@@ -66,12 +66,21 @@ async def create_device(device: DeviceCreate, pool=Depends(get_db)):
     now = datetime.utcnow()
 
     async with pool.acquire() as conn:
-        await conn.execute("""
+        await conn.execute(
+            """
             INSERT INTO devices (id, name, device_type, status, location, configuration, metadata, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        """, device_id, device.name, device.device_type.value, "offline",
-                           device.location, json.dumps(device.configuration or {}),
-                           json.dumps(device.metadata or {}), now, now)
+        """,
+            device_id,
+            device.name,
+            device.device_type.value,
+            "offline",
+            device.location,
+            json.dumps(device.configuration or {}),
+            json.dumps(device.metadata or {}),
+            now,
+            now,
+        )
 
     return {
         "id": device_id,
@@ -83,7 +92,7 @@ async def create_device(device: DeviceCreate, pool=Depends(get_db)):
         "metadata": device.metadata or {},
         "created_at": now,
         "updated_at": now,
-        "last_seen": None
+        "last_seen": None,
     }
 
 
@@ -116,7 +125,7 @@ async def update_device(device_id: str, update: DeviceUpdate, pool=Depends(get_d
 
         query = f"""
             UPDATE devices 
-            SET {', '.join(updates)}, updated_at = ${idx}
+            SET {", ".join(updates)}, updated_at = ${idx}
             WHERE id = ${idx + 1}
             RETURNING *
         """
@@ -143,19 +152,14 @@ async def send_command(device_id: str, command: DeviceCommand, pool=Depends(get_
             raise HTTPException(status_code=404, detail="Device not found")
 
         await conn.execute(
-            "UPDATE devices SET status = 'online', last_seen = $1 WHERE id = $2",
-            datetime.utcnow(), device_id
+            "UPDATE devices SET status = 'online', last_seen = $1 WHERE id = $2", datetime.utcnow(), device_id
         )
 
-    data = {
-        "command": command.command,
-        "parameters": command.parameters,
-        "priority": command.priority
-    }
+    data = {"command": command.command, "parameters": command.parameters, "priority": command.priority}
     #! todo send to external api device
 
     return {
         "command_id": str(uuid.uuid4()),
         "status": "accepted",
-        "message": f"Command '{command.command}' sent to device {device_id}"
+        "message": f"Command '{command.command}' sent to device {device_id}",
     }

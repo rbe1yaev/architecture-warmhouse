@@ -1,6 +1,6 @@
-from typing import Optional, Any, Dict
+from typing import Any, Dict, Optional
 
-from fastapi import Depends, APIRouter, HTTPException, Body
+from fastapi import APIRouter, Body, Depends, HTTPException
 from starlette.responses import JSONResponse
 
 from warmhouse.ms_gateway.depends.dependencies import get_service_client
@@ -33,8 +33,8 @@ def _sensor_type_to_device_type(sensor_type: str) -> str:
 
 @router.get("/api/v1/sensors")
 async def legacy_get_sensors(
-        location: Optional[str] = None,
-        client: ServiceClient = Depends(get_service_client),
+    location: Optional[str] = None,
+    client: ServiceClient = Depends(get_service_client),
 ):
     response = await client._make_request("device", "GET", "/devices")
     devices = response.json()
@@ -52,8 +52,8 @@ async def legacy_get_sensors(
 
 @router.get("/api/v1/sensors/{sensor_id}")
 async def legacy_get_sensor_by_id(
-        sensor_id: str,
-        client: ServiceClient = Depends(get_service_client),
+    sensor_id: str,
+    client: ServiceClient = Depends(get_service_client),
 ):
     response = await client._make_request("device", "GET", f"/devices/{sensor_id}")
     if response.status_code == 404:
@@ -64,8 +64,8 @@ async def legacy_get_sensor_by_id(
 
 @router.post("/api/v1/sensors")
 async def legacy_create_sensor(
-        payload: Dict[str, Any] = Body(...),
-        client: ServiceClient = Depends(get_service_client),
+    payload: Dict[str, Any] = Body(...),
+    client: ServiceClient = Depends(get_service_client),
 ):
     device_payload: Dict[str, Any] = {
         "name": payload.get("name"),
@@ -88,9 +88,9 @@ async def legacy_create_sensor(
 
 @router.put("/api/v1/sensors/{sensor_id}")
 async def legacy_update_sensor(
-        sensor_id: str,
-        payload: Dict[str, Any] = Body(...),
-        client: ServiceClient = Depends(get_service_client),
+    sensor_id: str,
+    payload: Dict[str, Any] = Body(...),
+    client: ServiceClient = Depends(get_service_client),
 ):
     configuration: Dict[str, Any] = {}
     if "value" in payload and payload["value"] is not None:
@@ -123,8 +123,8 @@ async def legacy_update_sensor(
 
 @router.delete("/api/v1/sensors/{sensor_id}")
 async def legacy_delete_sensor(
-        sensor_id: str,
-        client: ServiceClient = Depends(get_service_client),
+    sensor_id: str,
+    client: ServiceClient = Depends(get_service_client),
 ):
     response = await client._make_request("device", "DELETE", f"/devices/{sensor_id}")
     if response.status_code == 404:
@@ -136,9 +136,9 @@ async def legacy_delete_sensor(
 
 @router.patch("/api/v1/sensors/{sensor_id}/value")
 async def legacy_update_sensor_value(
-        sensor_id: str,
-        payload: Dict[str, Any] = Body(...),
-        client: ServiceClient = Depends(get_service_client),
+    sensor_id: str,
+    payload: Dict[str, Any] = Body(...),
+    client: ServiceClient = Depends(get_service_client),
 ):
     if "value" not in payload or "status" not in payload:
         raise HTTPException(status_code=400, detail="value and status are required")
@@ -161,16 +161,13 @@ async def legacy_update_sensor_value(
 
 @router.get("/api/v1/sensors/temperature/{location}")
 async def legacy_get_temperature_by_location(
-        location: str,
-        client: ServiceClient = Depends(get_service_client),
+    location: str,
+    client: ServiceClient = Depends(get_service_client),
 ):
     response = await client._make_request("device", "GET", "/devices")
     devices = response.json()
 
-    candidates = [
-        d for d in devices
-        if d.get("device_type") == "temperature_sensor" and d.get("location") == location
-    ]
+    candidates = [d for d in devices if d.get("device_type") == "temperature_sensor" and d.get("location") == location]
     if not candidates:
         raise HTTPException(status_code=404, detail="No temperature sensors for this location")
 

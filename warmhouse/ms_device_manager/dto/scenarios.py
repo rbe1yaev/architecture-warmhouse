@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional, List
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -16,4 +16,3 @@ class ScenarioCreate(BaseModel):
     trigger_type: str  # "time" или "manual"
     cron_schedule: Optional[str] = None  # Для триггера времени
     actions: List[ScenarioAction]
-

@@ -55,7 +55,7 @@
 
 ### 5. Визуализация контекста системы — диаграмма С4
 
-[Диаграмма контекста](https://github.com/Wardar-py/architecture-warmhouse/diagrams/monolithic_c4_context.puml)
+[Диаграмма контекста](https://github.com/Wardar-py/architecture-warmhouse/blob/warmhouse/diagrams/monolithic_c4_context.puml)
 
 # Задание 2. Проектирование микросервисной архитектуры
 
@@ -63,19 +63,19 @@
 
 **Диаграмма контейнеров (Containers)**
 
-[Диаграмма контейнеров](https://github.com/Wardar-py/architecture-warmhouse/diagrams/ms_c4_container.puml)
+[Диаграмма контейнеров](https://github.com/Wardar-py/architecture-warmhouse/blob/warmhouse/diagrams/ms_c4_container.puml)
 
 **Диаграмма компонентов (Components)**
 
-[Диаграмма компонентов](https://github.com/Wardar-py/architecture-warmhouse/diagrams/ms_c4_component.puml)
+[Диаграмма компонентов](https://github.com/Wardar-py/architecture-warmhouse/blob/warmhouse/diagrams/ms_c4_component.puml)
 
 **Диаграмма кода (Code)**
 
-[Диаграмма_кода](https://github.com/Wardar-py/architecture-warmhouse/diagrams/ms_c4_code.puml)
+[Диаграмма_кода](https://github.com/Wardar-py/architecture-warmhouse/blob/warmhouse/diagrams/ms_c4_code.puml)
 
 # Задание 3. Разработка ER-диаграммы
 
-[ER Диаграмма](https://github.com/Wardar-py/architecture-warmhouse/diagrams/er_diagram.puml)
+[ER Диаграмма](https://github.com/Wardar-py/architecture-warmhouse/blob/warmhouse/diagrams/er_diagram.puml)
 
 # Задание 4. Создание и документирование API
 
@@ -88,9 +88,9 @@
 Pusher, в свою очередь, отвечает за рассылку уведомлений пользователям через постоянное WebSocket-подключение.
 
 ### 2. Документация API
-[Async API](https://github.com/Wardar-py/architecture-warmhouse/openapi/asyncapi.yaml)
-[Gateway](https://github.com/Wardar-py/architecture-warmhouse/openapi/gateway.yaml)
-[Device Manager](https://github.com/Wardar-py/architecture-warmhouse/openapi/device_manager.yaml)
+[Async API](https://github.com/Wardar-py/architecture-warmhouse/blob/warmhouse/openapi/asyncapi.yaml)
+[Gateway](https://github.com/Wardar-py/architecture-warmhouse/blob/warmhouse/openapi/gateway.yaml)
+[Device Manager](https://github.com/Wardar-py/architecture-warmhouse/blob/warmhouse/openapi/device_manager.yaml)
 
 # Задание 5. Работа с docker и docker-compose
 

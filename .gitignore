@@ -1,5 +1,7 @@
 # Created by https://www.toptal.com/developers/gitignore/api/terraform,helm,visualstudiocode,jetbrains+all
 # Edit at https://www.toptal.com/developers/gitignore?templates=terraform,helm,visualstudiocode,jetbrains+all
+**/venv
+venv
 
 ### Helm ###
 # Chart dependencies

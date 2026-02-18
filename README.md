@@ -40,9 +40,7 @@
 
 ### 5. Визуализация контекста системы — диаграмма С4
 
-```markdown
 [Схема монолита](diagrams/1_monolith.puml)
-```
 
 # Задание 2. Проектирование микросервисной архитектуры
 
@@ -50,30 +48,67 @@
 
 **Диаграмма контейнеров (Containers)**
 
-Добавьте диаграмму.
+[2_containers.puml](diagrams/2_containers.puml)
 
 **Диаграмма компонентов (Components)**
 
-Добавьте диаграмму для каждого из выделенных микросервисов.
+[2_components.puml](diagrams/2_components.puml)
 
 **Диаграмма кода (Code)**
 
-Добавьте одну диаграмму или несколько.
+[2_code.puml](diagrams/2_code.puml)
 
 # Задание 3. Разработка ER-диаграммы
 
-Добавьте сюда ER-диаграмму. Она должна отражать ключевые сущности системы, их атрибуты и тип связей между ними.
+[3_er.puml](diagrams/3_er.puml)
 
 # Задание 4. Создание и документирование API
 
 ### 1. Тип API
 
-Для взаимодействия между микросервисами и фронтендом будет использоваться REST API (HTTP/JSON), так как это стандарт индустрии с отличной поддержкой инструментов (например, Swagger). Для сбора телеметрии в будущем оправдано использование gRPC или брокера сообщений (Kafka/RabbitMQ) для повышения пропускной способности.
+Для взаимодействия между микросервисами и фронтендом будет использоваться REST API (HTTP/JSON), так как это стандарт индустрии с отличной поддержкой инструментов (например, Swagger). Для сбора телеметрии в будущем оправдано использование gRPC или брокера сообщений (RabbitMQ) для повышения пропускной способности.
 
 ### 2. Документация API
 
-[Посетите Яндекс](https://ya.ru/)
+[Документация](swagger.yaml)
 
 # Задание 5. Работа с docker и docker-compose
 
+1.
+```
+  temperature-api:
+    build:
+      context: ./temperature-api
+    container_name: temperature-api
+    ports:
+      - "8081:8081"
+    networks:
+      - smarthome-network
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+```
 
+2. 
+```
+  postgres:
+    image: postgres:16-alpine
+    container_name: smarthome-postgres
+    environment:
+      - POSTGRES_DB=smarthome
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./smart_home/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - smarthome-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d smarthome" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+```

@@ -1,0 +1,33 @@
+@startuml
+title C4 — Уровень контейнеров
+
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Component.puml
+
+Person(user, "Пользователь", "Владелец дома, пользователь системы «Тёплый дом»")
+
+System_Boundary(warmHome, "Система «Тёплый дом»") {
+  Container(web_app, "Веб-приложение", "JS(React)")
+  Container(api_gateway, "API Gateway", "Прокси API Сервис")
+  Container(device_service, "Device service", "Python/Flask", "Регистрация новых датчиков и отопительных модулей, контроль системы отопления.")
+  Container(user_service, "User service", "Python/Flask", "Регистрация, аутентификация (JWT), управление профилями и правами доступа к домам.")
+  Container(monitoring_service, "Monitoring service", "Python/Flask", "Прием данных от датчиков, хранение данных, предоставление графиков.")
+  ContainerDb(database, "Database", "PostgreSQL", "")
+}
+
+System_Ext(controllers, "Контроллеры управления системой отопления", "Устройства для включения/выключения отопления")
+System_Ext(sensors, "Температурные датчики", "Датчики для измерения температуры в доме")
+
+Rel(user, web_app, "Использует систему")
+Rel(web_app, api_gateway,"Отправка запросов", "HTTPS/JSON")
+
+Rel(api_gateway,device_service,"Управление устройствами", "HTTPS/JSON")
+Rel(api_gateway,user_service,"Управление пользователями", "HTTPS/JSON")
+Rel(api_gateway,monitoring_service,"Получение данных мониторинга", "HTTPS/JSON")
+Rel(device_service,sensors,"Получение данных о температуре в доме", "HTTPS/JSON")
+Rel(device_service,controllers,"Запрос для включения/выключения отопления", "HTTPS/JSON")
+
+Rel(device_service,database,"Получение и запись данных")
+Rel(user_service,database,"Получение и запись данных")
+Rel(monitoring_service,database,"Получение данных")
+
+@enduml

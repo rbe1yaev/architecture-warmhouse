@@ -1,0 +1,36 @@
+@startuml
+title C4 — Уровень компонентов. "Device service"
+
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Component.puml
+
+Container(api_gateway, "API Gateway", "Прокси API Сервис")
+System_Ext(external, "Внешние системы", "Умные устройства партнеров")
+
+Container_Boundary(device_service, "Device service") {
+  Component(device_controller, "Device controller", "Python", "REST для управления устройствами")
+  Component(integration_controller, "Integration controller", "Python", "REST для подключения устройств")
+  Component(device_repository, "Device repository", "Python", "Репозиторий для взаимодействия с БД")
+  Component(device_models, "Device models", "Python", "Модели в БД")
+  Component(device_dtos, "Device DTOs", "Python", "Объекты для взаимодействия")
+  Component(device_core, "Device core", "Python", "Бизнес логика")
+  Component(monitoring_adapter, "Monitoring adapter", "Python", "Адаптер для взаимодействия с сервисом мониторинга(сбор данных)")
+}
+ContainerDb(database, "Database", "PostgreSQL", "База данных")
+Container(message_broker, "Message broker", "RabbitMQ", "Брокер сообщений")
+Container(monitoring_service, "Monitoring service", "Python/Flask", "Прием данных от датчиков, хранение данных, предоставление графиков.")
+
+
+Rel(api_gateway, device_controller, "HTTPS/JSON")
+Rel(api_gateway, integration_controller, "HTTPS/JSON")
+Rel(device_controller, device_core, "")
+Rel(device_core, monitoring_adapter, "")
+Rel(device_controller, device_dtos, "")
+Rel(integration_controller, device_dtos, "")
+Rel(device_controller, device_repository, "")
+Rel(device_repository, device_models, "")
+Rel(device_models, database, "Чтение и запись данных")
+Rel(monitoring_adapter, message_broker, "Отправка сообщений")
+Rel(message_broker, monitoring_service, "Отправка сообщений")
+Rel(external, integration_controller, "HTTPS/JSON")
+
+@enduml

@@ -1,0 +1,94 @@
+@startuml
+title ER диаграмма "Device service"
+
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Component.puml
+
+class House {
+  +int ID
+  +string name
+  +User owner
+  +datetime created_at
+  +datetime updated_at
+
+  +createHouse()
+  +updateHouse()
+  +deleteHouse()
+  +getById()
+  +getByOwnerId()
+}
+
+class HouseMembers {
+  +int ID
+  +User user_id
+  +House house_id
+  +datetime added_at
+
+  +addMember()
+  +deleteMember()
+  +getMembersByHouseId()
+  +getHousesByUserId()
+}
+
+class User {
+  +int ID
+  +string email
+  +string name
+  +string password
+  +datetime created_at
+  +datetime updated_at
+
+  +createUser()
+  +updateUser()
+  +deleteUser()
+  +getById()
+  +getByName()
+  +getByEmail()
+}
+
+class Device {
+  +int ID
+  +string name
+  +string location
+  +DeviceType device_type_id
+  +House house_id
+  +string serial_number
+  +string status
+  +Time created_at
+
+  +Device createDevice()
+  +Device updateDevice()
+  +void deleteDevice()
+  +Device getById()
+  +Device getByLocation()
+}
+
+class DeviceType {
+  +int ID
+  +String name
+
+  +createDeviceType()
+  +updateDeviceType()
+  +deleteDeviceType()
+  +getById()
+}
+
+class Metrics {
+  +int ID
+  +String name
+  +float64 value
+  +String unit
+  +Device device_id
+  +Time created_at
+
+  +createMetric()
+  +getByDeviceId()
+}
+
+User "1" -- "0..*" House: Owner
+User "1" -- "1" HouseMembers: ""
+House "1" -- "1" HouseMembers: ""
+House "1" -- "0..*" Device: ""
+Device "1" -- "1" DeviceType: ""
+Device "1" -- "0..*" Metrics: ""
+
+@enduml

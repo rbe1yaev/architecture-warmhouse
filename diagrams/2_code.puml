@@ -1,0 +1,15 @@
+@startuml
+!theme plain
+title C4 — Уровень кода
+
+Gateway --> DeviceController
+Gateway --> IntegrationController
+DeviceController --> DeviceRepository
+DeviceController --> DeviceCore
+DeviceController --> DeviceDTO
+IntegrationController --> DeviceDTO
+DeviceRepository --> Device
+DeviceCore --> MonitoringAdapterService
+MonitoringAdapterService ..> RabbitMQ
+
+@enduml

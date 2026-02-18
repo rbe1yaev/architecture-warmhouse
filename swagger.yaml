@@ -1,0 +1,247 @@
+swagger: "2.0"
+info:
+  description: "API документация для микросервиса Device Service экосистемы Умного Дома"
+  version: "1.0.0"
+  title: "Device Service API"
+host: "api.warmhouse.ru"
+basePath: "/v1"
+tags:
+- name: "devices"
+  description: "Управление устройствами умного дома"
+- name: "metrics"
+  description: "Работа с показаниями устройств"
+schemes:
+- "https"
+
+paths:
+  /devices:
+    post:
+      tags:
+      - "devices"
+      summary: "Регистрация нового устройства"
+      description: "Добавляет новое устройство и привязывает его к дому (House)."
+      operationId: "createDevice"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "Данные нового устройства"
+        required: true
+        schema:
+          $ref: "#/definitions/DeviceInput"
+      responses:
+        "201":
+          description: "Устройство успешно создано"
+          schema:
+            $ref: "#/definitions/Device"
+          examples:
+            application/json:
+              ID: 101
+              name: "Термостат Гостиная"
+              location: "Гостиная"
+              device_type_id: 2
+              house_id: 15
+              serial_number: "SN-TH-8901"
+              status: "offline"
+              created_at: "2023-10-25T14:30:00Z"
+        "400":
+          description: "Некорректные данные запроса"
+
+  /devices/{deviceId}:
+    get:
+      tags:
+      - "devices"
+      summary: "Получение информации об устройстве"
+      operationId: "getDeviceById"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "deviceId"
+        in: "path"
+        description: "Уникальный идентификатор устройства"
+        required: true
+        type: "integer"
+        format: "int64"
+      responses:
+        "200":
+          description: "Успешный ответ с данными устройства"
+          schema:
+            $ref: "#/definitions/Device"
+        "404":
+          description: "Устройство не найдено"
+
+  /devices/{deviceId}/status:
+    put:
+      tags:
+      - "devices"
+      summary: "Обновление статуса устройства"
+      description: "Позволяет изменить статус (например, с offline на online или active)."
+      operationId: "updateDeviceStatus"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "deviceId"
+        in: "path"
+        required: true
+        type: "integer"
+      - in: "body"
+        name: "body"
+        required: true
+        schema:
+          type: "object"
+          properties:
+            status:
+              type: "string"
+              example: "online"
+      responses:
+        "200":
+          description: "Статус успешно обновлен"
+          schema:
+            $ref: "#/definitions/Device"
+        "404":
+          description: "Устройство не найдено"
+        "500":
+          description: "Внутренняя ошибка сервера"
+
+  /devices/{deviceId}/metrics:
+    get:
+      tags:
+      - "metrics"
+      summary: "Получение истории показаний устройства"
+      operationId: "getMetricsByDeviceId"
+      produces:
+      - "application/json"
+      parameters:
+      - name: "deviceId"
+        in: "path"
+        required: true
+        type: "integer"
+      responses:
+        "200":
+          description: "Список метрик устройства"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/Metric"
+          examples:
+            application/json:
+              - ID: 1
+                name: "Temperature"
+                value: 23.5
+                unit: "Celsius"
+                device_id: 101
+                created_at: "2023-10-25T15:00:00Z"
+
+  /metrics:
+    post:
+      tags:
+      - "metrics"
+      summary: "Отправка новых показаний"
+      description: "Эндпоинт для приема новых данных с сенсоров."
+      operationId: "createMetric"
+      consumes:
+      - "application/json"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "body"
+        name: "body"
+        required: true
+        schema:
+          $ref: "#/definitions/MetricInput"
+      responses:
+        "201":
+          description: "Метрика успешно сохранена"
+        "400":
+          description: "Неверный формат данных"
+
+definitions:
+  DeviceInput:
+    type: "object"
+    required:
+    - "name"
+    - "device_type_id"
+    - "house_id"
+    - "serial_number"
+    properties:
+      name:
+        type: "string"
+        example: "Термостат Гостиная"
+      location:
+        type: "string"
+        example: "Гостиная"
+      device_type_id:
+        type: "integer"
+        example: 2
+      house_id:
+        type: "integer"
+        example: 15
+      serial_number:
+        type: "string"
+        example: "SN-TH-8901"
+
+  Device:
+    type: "object"
+    properties:
+      ID:
+        type: "integer"
+      name:
+        type: "string"
+      location:
+        type: "string"
+      device_type_id:
+        type: "integer"
+      house_id:
+        type: "integer"
+      serial_number:
+        type: "string"
+      status:
+        type: "string"
+      created_at:
+        type: "string"
+        format: "date-time"
+
+  MetricInput:
+    type: "object"
+    required:
+    - "name"
+    - "value"
+    - "unit"
+    - "device_id"
+    properties:
+      name:
+        type: "string"
+        example: "Temperature"
+      value:
+        type: "number"
+        format: "float"
+        example: 23.5
+      unit:
+        type: "string"
+        example: "Celsius"
+      device_id:
+        type: "integer"
+        example: 101
+
+  Metric:
+    type: "object"
+    properties:
+      ID:
+        type: "integer"
+      name:
+        type: "string"
+      value:
+        type: "number"
+        format: "float"
+      unit:
+        type: "string"
+      device_id:
+        type: "integer"
+      created_at:
+        type: "string"
+        format: "date-time"

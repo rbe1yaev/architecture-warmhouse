@@ -1,0 +1,16 @@
+@startuml
+title Диаграмма контекста монолита
+
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Component.puml
+
+Person(user, "Пользователь", "Владелец дома, пользователь системы «Тёплый дом»")
+System(warm_home, "Система «Тёплый дом»", "Go-приложение + PostgreSQL база данных")
+
+System_Ext(controllers, "Контроллеры управления системой отопления", "Устройства для включения/выключения отопления")
+System_Ext(sensors, "Температурные датчики", "Датчики для измерения температуры в доме")
+
+Rel(user,warm_home,"Отправляет запросы через веб интерфейс", "HTTPS/Web")
+Rel(sensors,warm_home,"Данные о температуре в доме")
+Rel(warm_home,controllers,"Запрос для включения/выключения отопления")
+
+@enduml

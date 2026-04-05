@@ -1,0 +1,291 @@
+asyncapi: 3.1.0
+info:
+  title: Тёплый дом — Event Bus API
+  version: 1.0.0
+  description: |
+    Асинхронные события платформы умного дома.
+    Используются для взаимодействия между сервисами через шину событий.
+    Сервисы публикуют события и подписываются на события других сервисов.
+servers:
+  production:
+    host: 'kafka.teplyddom.ru:9092'
+    protocol: kafka
+    description: Брокер сообщений Kafka
+channels:
+  device.registered:
+    address: device.registered
+    messages:
+      onDeviceRegistered.message:
+        $ref: '#/components/messages/DeviceRegisteredEvent'
+    description: |
+      Событие публикуется сервисом устройств
+      после успешной регистрации нового устройства в системе.
+      На это событие подписываются:
+      - Шлюз устройств (для подготовки соединения)
+      - Сервис уведомлений (для уведомления пользователя)
+  device.telemetry.received:
+    address: device.telemetry.received
+    messages:
+      onTelemetryReceived.message:
+        $ref: '#/components/messages/TelemetryReceivedEvent'
+    description: |
+      Событие публикуется шлюзом устройств
+      при получении новых показаний от датчика.
+      На это событие подписываются:
+      - Сервис телеметрии (для сохранения значений)
+      - Сервис сценариев (для проверки условий запуска сценария)
+  device.command.result:
+    address: device.command.result
+    messages:
+      onCommandResult.message:
+        $ref: '#/components/messages/CommandResultEvent'
+    description: |
+      Событие публикуется сервисом управления устройствами
+      после выполнения или сбоя команды.
+      На это событие подписываются:
+      - Сервис уведомлений (для уведомления пользователя при ошибке)
+      - Сервис сценариев (для отслеживания результатов автоматических действий)
+  scenario.triggered:
+    address: scenario.triggered
+    messages:
+      onScenarioTriggered.message:
+        $ref: '#/components/messages/ScenarioTriggeredEvent'
+    description: |
+      Событие публикуется сервисом сценариев
+      после срабатывания пользовательского сценария.
+      На это событие подписываются:
+      - Сервис уведомлений (для уведомления пользователя)
+operations:
+  onDeviceRegistered:
+    action: send
+    channel:
+      $ref: '#/channels/device.registered'
+    summary: Устройство зарегистрировано
+    messages:
+      - $ref: '#/channels/device.registered/messages/onDeviceRegistered.message'
+  onTelemetryReceived:
+    action: send
+    channel:
+      $ref: '#/channels/device.telemetry.received'
+    summary: Получены показания с датчика
+    messages:
+      - $ref: >-
+          #/channels/device.telemetry.received/messages/onTelemetryReceived.message
+  onCommandResult:
+    action: send
+    channel:
+      $ref: '#/channels/device.command.result'
+    summary: Результат выполнения команды
+    messages:
+      - $ref: '#/channels/device.command.result/messages/onCommandResult.message'
+  onScenarioTriggered:
+    action: send
+    channel:
+      $ref: '#/channels/scenario.triggered'
+    summary: Сработал сценарий автоматизации
+    messages:
+      - $ref: '#/channels/scenario.triggered/messages/onScenarioTriggered.message'
+components:
+  messages:
+    DeviceRegisteredEvent:
+      name: DeviceRegisteredEvent
+      title: Устройство зарегистрировано
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - event_id
+          - device_id
+          - house_id
+          - device_type_id
+          - serial_number
+          - occurred_at
+        properties:
+          event_id:
+            type: string
+            format: uuid
+            description: Идентификатор события
+          device_id:
+            type: string
+            format: uuid
+            description: Идентификатор нового устройства
+          house_id:
+            type: string
+            format: uuid
+            description: 'Дом, к которому привязано устройство'
+          device_type_id:
+            type: string
+            format: uuid
+            description: Тип устройства
+          serial_number:
+            type: string
+            description: Серийный номер устройства
+          occurred_at:
+            type: string
+            format: date-time
+            description: Время возникновения события
+      examples:
+        - name: Пример события
+          payload:
+            event_id: f7a98216-f4bc-488a-9d32-4f581ba92386
+            device_id: d1d2d3d4-0000-0000-0000-000000000001
+            house_id: f1e2d3c4-0000-0000-0000-000000000001
+            device_type_id: a1b2c3d4-0001-0000-0000-000000000001
+            serial_number: SN-00123456
+            occurred_at: '2024-11-01T10:00:00Z'
+    TelemetryReceivedEvent:
+      name: TelemetryReceivedEvent
+      title: Получены показания с датчика
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - event_id
+          - device_id
+          - house_id
+          - metric_name
+          - metric_value
+          - unit
+          - occurred_at
+        properties:
+          event_id:
+            type: string
+            format: uuid
+            description: Идентификатор события
+          device_id:
+            type: string
+            format: uuid
+            description: 'Устройство, от которого получены данные'
+          house_id:
+            type: string
+            format: uuid
+            description: Дом устройства
+          metric_name:
+            type: string
+            description: 'Название метрики (например temperature, humidity)'
+          metric_value:
+            type: number
+            description: Значение метрики
+          unit:
+            type: string
+            description: 'Единица измерения (например celsius, percent)'
+          occurred_at:
+            type: string
+            format: date-time
+            description: Время получения показания
+      examples:
+        - name: Показание температуры
+          payload:
+            event_id: f7a98216-f4bc-488a-9d32-4f581ba92386
+            device_id: d1d2d3d4-0000-0000-0000-000000000001
+            house_id: f1e2d3c4-0000-0000-0000-000000000001
+            metric_name: temperature
+            metric_value: 21.5
+            unit: celsius
+            occurred_at: '2024-11-01T08:45:00Z'
+    CommandResultEvent:
+      name: CommandResultEvent
+      title: Результат выполнения команды
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - event_id
+          - command_id
+          - device_id
+          - command_type
+          - status
+          - occurred_at
+        properties:
+          event_id:
+            type: string
+            format: uuid
+            description: Идентификатор события
+          command_id:
+            type: string
+            format: uuid
+            description: Идентификатор команды
+          device_id:
+            type: string
+            format: uuid
+            description: 'Устройство, которому была отправлена команда'
+          command_type:
+            type: string
+            description: Тип команды
+          status:
+            type: string
+            enum:
+              - SUCCEEDED
+              - FAILED
+            description: Результат выполнения
+          failure_reason:
+            type: string
+            description: Причина сбоя (только при status FAILED)
+          occurred_at:
+            type: string
+            format: date-time
+            description: Время возникновения события
+      examples:
+        - name: Команда выполнена успешно
+          payload:
+            event_id: f7a98216-f4bc-488a-9d32-4f581ba92386
+            command_id: f7a98216-f4bc-488a-9d32-4f581ba92386
+            device_id: d1d2d3d4-0000-0000-0000-000000000001
+            command_type: SET_TEMPERATURE
+            status: SUCCEEDED
+            occurred_at: '2024-11-01T09:00:05Z'
+        - name: Команда не выполнена
+          payload:
+            event_id: f7a98216-f4bc-488a-9d32-4f581ba92386
+            command_id: f7a98216-f4bc-488a-9d32-4f581ba92386
+            device_id: d1d2d3d4-0000-0000-0000-000000000002
+            command_type: OPEN_GATE
+            status: FAILED
+            failure_reason: Устройство не ответило в течение таймаута
+            occurred_at: '2024-11-01T09:01:00Z'
+    ScenarioTriggeredEvent:
+      name: ScenarioTriggeredEvent
+      title: Сработал сценарий автоматизации
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - event_id
+          - scenario_id
+          - house_id
+          - user_id
+          - trigger_description
+          - occurred_at
+        properties:
+          event_id:
+            type: string
+            format: uuid
+            description: Идентификатор события
+          scenario_id:
+            type: string
+            format: uuid
+            description: Сработавший сценарий
+          house_id:
+            type: string
+            format: uuid
+            description: 'Дом, в котором сработал сценарий'
+          user_id:
+            type: string
+            format: uuid
+            description: Владелец сценария
+          trigger_description:
+            type: string
+            description: Человекопонятное описание причины срабатывания
+          occurred_at:
+            type: string
+            format: date-time
+            description: Время срабатывания
+      examples:
+        - name: Сценарий сработал по температуре
+          payload:
+            event_id: f7a98216-f4bc-488a-9d32-4f581ba92386
+            scenario_id: f7a98216-f4bc-488a-9d32-4f581ba92386
+            house_id: f1e2d3c4-0000-0000-0000-000000000001
+            user_id: f7a98216-f4bc-488a-9d32-4f581ba92386
+            trigger_description: Температура опустилась ниже 18°C — включено отопление
+            occurred_at: '2024-11-01T06:00:00Z'

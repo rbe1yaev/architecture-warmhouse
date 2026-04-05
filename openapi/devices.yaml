@@ -1,0 +1,318 @@
+openapi: 3.0.3
+
+info:
+  title: Device Management Service API
+  description: |
+    API сервиса устройств.
+    Отвечает за каталог устройств, реестр подключённых устройств,
+    процесс подключения и активации устройства пользователем.
+  version: 1.0.0
+
+servers:
+  - url: https://api.teplydом.ru/devices/v1
+    description: Production
+
+tags:
+  - name: Каталог
+    description: Просмотр поддерживаемых типов устройств
+  - name: Реестр
+    description: Управление подключёнными устройствами
+  - name: Подключение
+    description: Процесс подключения нового устройства
+
+paths:
+
+  /catalog:
+    get:
+      tags:
+        - Каталог
+      summary: Получить список поддерживаемых типов устройств
+      description: |
+        Возвращает каталог всех поддерживаемых типов устройств.
+        Используется при выборе устройства пользователем
+        и при проверке совместимости в сервисе управления устройствами.
+      operationId: getCatalog
+      parameters:
+        - name: module_code
+          in: query
+          required: false
+          description: Фильтр по коду модуля (например heating, lighting, gates)
+          schema:
+            type: string
+            example: heating
+      responses:
+        '200':
+          description: Список типов устройств успешно получен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DeviceType'
+              examples:
+                success:
+                  summary: Успешный ответ
+                  value:
+                    items:
+                      - id: "a1b2c3d4-0001-0000-0000-000000000001"
+                        vendor: "Teplota"
+                        model_name: "SmartThermo X1"
+                        protocol: "MQTT"
+                        module_code: "heating"
+                        capabilities:
+                          - code: "set_temperature"
+                            name: "Установка температуры"
+                          - code: "read_temperature"
+                            name: "Чтение температуры"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /devices:
+    get:
+      tags:
+        - Реестр
+      summary: Получить список устройств дома
+      description: |
+        Возвращает все устройства, подключённые к указанному дому.
+        Используется в личном кабинете пользователя
+        и порталом поддержки для просмотра состояния устройств клиента.
+      operationId: getDevicesByHouse
+      parameters:
+        - name: house_id
+          in: query
+          required: true
+          description: Идентификатор дома
+          schema:
+            type: string
+            format: uuid
+            example: "f1e2d3c4-0000-0000-0000-000000000001"
+      responses:
+        '200':
+          description: Список устройств успешно получен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Device'
+              examples:
+                success:
+                  summary: Успешный ответ
+                  value:
+                    items:
+                      - id: "d1d2d3d4-0000-0000-0000-000000000001"
+                        name: "Термостат в гостиной"
+                        serial_number: "SN-00123456"
+                        status: "ACTIVE"
+                        device_type:
+                          id: "a1b2c3d4-0001-0000-0000-000000000001"
+                          vendor: "Teplota"
+                          model_name: "SmartThermo X1"
+                        installed_at: "2024-03-01T10:00:00Z"
+                        last_seen_at: "2024-11-01T08:45:00Z"
+        '400':
+          description: Не передан обязательный параметр house_id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                missing_param:
+                  value:
+                    code: "MISSING_PARAMETER"
+                    message: "Параметр house_id обязателен"
+        '404':
+          description: Дом не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                not_found:
+                  value:
+                    code: "HOUSE_NOT_FOUND"
+                    message: "Дом с указанным идентификатором не найден"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /devices/onboarding:
+    post:
+      tags:
+        - Подключение
+      summary: Начать подключение нового устройства
+      description: |
+        Запускает процесс подключения нового устройства к дому.
+        Возвращает код сопряжения (pairing code), который нужно ввести
+        или отсканировать на физическом устройстве для завершения привязки.
+        После успешного сопряжения устройство необходимо активировать.
+      operationId: startOnboarding
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnboardingRequest'
+            examples:
+              request:
+                summary: Запрос на подключение устройства
+                value:
+                  house_id: "f1e2d3c4-0000-0000-0000-000000000001"
+                  device_type_id: "a1b2c3d4-0001-0000-0000-000000000001"
+                  serial_number: "SN-00123456"
+                  name: "Термостат в гостиной"
+      responses:
+        '201':
+          description: Процесс подключения успешно запущен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OnboardingSession'
+              examples:
+                success:
+                  summary: Сессия подключения создана
+                  value:
+                    session_id: "sess-0001-0000-0000-000000000001"
+                    pairing_code: "8472"
+                    status: "STARTED"
+                    expires_at: "2024-11-01T09:15:00Z"
+        '400':
+          description: Неверные данные запроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalid:
+                  value:
+                    code: "INVALID_REQUEST"
+                    message: "Серийный номер уже зарегистрирован в системе"
+        '404':
+          description: Дом или тип устройства не найдены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+
+    DeviceType:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        vendor:
+          type: string
+        model_name:
+          type: string
+        protocol:
+          type: string
+          enum: [MQTT, HTTP, WEBSOCKET]
+        module_code:
+          type: string
+        capabilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Capability'
+
+    Capability:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+
+    Device:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        serial_number:
+          type: string
+        status:
+          type: string
+          enum: [NEW, REGISTERED, ACTIVE, INACTIVE, BLOCKED]
+        device_type:
+          $ref: '#/components/schemas/DeviceType'
+        installed_at:
+          type: string
+          format: date-time
+        last_seen_at:
+          type: string
+          format: date-time
+
+    OnboardingRequest:
+      type: object
+      required:
+        - house_id
+        - device_type_id
+        - serial_number
+        - name
+      properties:
+        house_id:
+          type: string
+          format: uuid
+        device_type_id:
+          type: string
+          format: uuid
+        serial_number:
+          type: string
+        name:
+          type: string
+
+    OnboardingSession:
+      type: object
+      properties:
+        session_id:
+          type: string
+          format: uuid
+        pairing_code:
+          type: string
+        status:
+          type: string
+          enum: [STARTED, PAIRED, CONFIRMED, EXPIRED]
+        expires_at:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []

@@ -1,0 +1,6 @@
+site_name: теплый дом
+markdown_extensions:
+  - md_in_html
+plugins:
+  - plantuml:
+      puml_url: https://www.plantuml.com/plantuml/

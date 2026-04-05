@@ -1,0 +1,36 @@
+services:
+
+  swagger-devices:
+    image: swaggerapi/swagger-ui:latest
+    container_name: swagger-ui-devices
+    restart: unless-stopped
+
+    ports:
+      - "8090:8080"
+
+    environment:
+      SWAGGER_JSON: /app/openapi.yaml
+
+    volumes:
+      - ./devices.yaml:/app/openapi.yaml:ro
+
+  swagger-devices-manager:
+    image: swaggerapi/swagger-ui:latest
+    container_name: swagger-ui-test
+    restart: unless-stopped
+
+    ports:
+      - "8091:8080"
+
+    environment:
+      SWAGGER_JSON: /app/openapi.yaml
+
+    volumes:
+      - ./device-manager.yaml:/app/openapi.yaml:ro
+
+
+
+
+networks:
+  docs-network:
+    driver: bridge

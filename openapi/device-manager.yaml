@@ -1,0 +1,260 @@
+openapi: 3.0.3
+
+info:
+  title: Device Control Service API
+  description: |
+    API сервиса управления устройствами.
+    Отвечает за выполнение команд, чтение текущего состояния
+    и отслеживание результата выполнения команд.
+  version: 1.0.0
+
+servers:
+  - url: https://api.teplydом.ru/control/v1
+    description: Production
+
+tags:
+  - name: Состояние
+    description: Получение текущего состояния устройства
+  - name: Команды
+    description: Отправка команд устройству
+
+paths:
+
+  /devices/{deviceId}/state:
+    get:
+      tags:
+        - Состояние
+      summary: Получить текущее состояние устройства
+      description: |
+        Возвращает актуальное и целевое состояние устройства.
+        Актуальное состояние — то, что устройство сообщило последним.
+        Целевое состояние — то, что было запрошено командой.
+        Используется личным кабинетом и порталом поддержки.
+      operationId: getDeviceState
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          description: Идентификатор устройства
+          schema:
+            type: string
+            format: uuid
+            example: "d1d2d3d4-0000-0000-0000-000000000001"
+      responses:
+        '200':
+          description: Состояние устройства успешно получено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceState'
+              examples:
+                thermostat:
+                  summary: Состояние термостата
+                  value:
+                    device_id: "d1d2d3d4-0000-0000-0000-000000000001"
+                    actual_state:
+                      power: "on"
+                      current_temperature: 21.5
+                    desired_state:
+                      power: "on"
+                      target_temperature: 23.0
+                    updated_at: "2024-11-01T08:45:00Z"
+                gate:
+                  summary: Состояние ворот
+                  value:
+                    device_id: "d1d2d3d4-0000-0000-0000-000000000002"
+                    actual_state:
+                      position: "closed"
+                    desired_state:
+                      position: "closed"
+                    updated_at: "2024-11-01T07:30:00Z"
+        '404':
+          description: Устройство не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                not_found:
+                  value:
+                    code: "DEVICE_NOT_FOUND"
+                    message: "Устройство с указанным идентификатором не найдено"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /devices/{deviceId}/commands:
+    post:
+      tags:
+        - Команды
+      summary: Отправить команду устройству
+      description: |
+        Создаёт и отправляет команду устройству.
+        Возвращает идентификатор команды для отслеживания статуса выполнения.
+        Поддерживаемые команды зависят от типа устройства и его возможностей.
+        Доступные типы команд:
+        - TURN_ON — включить устройство
+        - TURN_OFF — выключить устройство
+        - SET_TEMPERATURE — установить температуру (для термостатов)
+        - OPEN_GATE — открыть ворота
+        - CLOSE_GATE — закрыть ворота
+      operationId: sendCommand
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          description: Идентификатор устройства
+          schema:
+            type: string
+            format: uuid
+            example: "d1d2d3d4-0000-0000-0000-000000000001"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommandRequest'
+            examples:
+              turn_on:
+                summary: Включить устройство
+                value:
+                  type: "TURN_ON"
+                  payload: {}
+              set_temperature:
+                summary: Установить температуру
+                value:
+                  type: "SET_TEMPERATURE"
+                  payload:
+                    target_temperature: 23.0
+              open_gate:
+                summary: Открыть ворота
+                value:
+                  type: "OPEN_GATE"
+                  payload: {}
+      responses:
+        '202':
+          description: Команда принята и отправлена на выполнение
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandResponse'
+              examples:
+                accepted:
+                  summary: Команда принята
+                  value:
+                    command_id: "cmd-0001-0000-0000-000000000001"
+                    device_id: "d1d2d3d4-0000-0000-0000-000000000001"
+                    type: "SET_TEMPERATURE"
+                    status: "SENT"
+                    created_at: "2024-11-01T09:00:00Z"
+        '400':
+          description: Неподдерживаемая команда или неверные параметры
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                unsupported:
+                  value:
+                    code: "UNSUPPORTED_COMMAND"
+                    message: "Данное устройство не поддерживает команду SET_TEMPERATURE"
+        '404':
+          description: Устройство не найдено
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Устройство недоступно или офлайн
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                offline:
+                  value:
+                    code: "DEVICE_OFFLINE"
+                    message: "Устройство в данный момент недоступно"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+
+    DeviceState:
+      type: object
+      properties:
+        device_id:
+          type: string
+          format: uuid
+        actual_state:
+          type: object
+          additionalProperties: true
+          description: Последнее известное состояние устройства
+        desired_state:
+          type: object
+          additionalProperties: true
+          description: Целевое состояние устройства
+        updated_at:
+          type: string
+          format: date-time
+
+    CommandRequest:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum:
+            - TURN_ON
+            - TURN_OFF
+            - SET_TEMPERATURE
+            - OPEN_GATE
+            - CLOSE_GATE
+        payload:
+          type: object
+          additionalProperties: true
+          description: Параметры команды (зависят от типа команды)
+
+    CommandResponse:
+      type: object
+      properties:
+        command_id:
+          type: string
+          format: uuid
+        device_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+        status:
+          type: string
+          enum: [CREATED, SENT, SUCCEEDED, FAILED]
+        created_at:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - BearerAuth: []

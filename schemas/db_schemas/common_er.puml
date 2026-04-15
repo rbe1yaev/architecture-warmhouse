@@ -1,0 +1,107 @@
+@startuml
+
+' -------- Devices --------
+class Device {
+    +ID
+    +UserID
+    +DeviceType
+}
+
+class DeviceType {
+    +ID
+    +Value
+}
+
+class Sensor {
+    +ID
+	+Name 
+	+Type
+	+Location
+	+Value
+	+Unit
+	+Status
+	+LastUpdated
+	+CreatedAt
+}
+
+class SensorStatus {
+    +StatusID
+	+Value
+}
+
+class SensorType {
+    +TypeId
+    +Value
+}
+
+class HeatingSystem {
+    +ID
+	+Name 
+	+Type
+	+Location
+	+Unit
+	+Status
+	+LastUpdated
+	+CreatedAt
+}
+
+class HeatingSystemType {
+    +TypeId
+    +Value
+}
+
+class HeatingSystemStatus {
+    +StatusID
+	+Value
+}
+
+Device "1" -- "*" DeviceType
+
+Device "1" -- "1" HeatingSystem
+Device "1" -- "1" Sensor
+
+HeatingSystem "1" -- "*" HeatingSystemStatus
+HeatingSystem "1" -- "*" HeatingSystemType
+Sensor "1" -- "*" SensorStatus
+Sensor "1" -- "*" SensorType
+
+' -----------------------
+
+' ------User Data--------
+
+class User {
+    +Name
+    +Surname
+    +Email
+    +Adress
+    +CreatedAt
+    +LastUpdated
+    +PaymantInfoID
+    +SubscriptionExpireDate
+}
+
+class PaymentInfo {
+    ID
+    CardNumber
+    DateExpire
+    OwnerName
+    Secret
+}
+
+User "1" -- "*" PaymantInfo
+
+'------------------------
+
+'--------Rules-----------
+
+Class Rules {
+	+ID
+	+UserID
+	+SensorID
+	+DeviceID
+	+RuleDescription
+}
+
+'-----------------------
+
+@enduml

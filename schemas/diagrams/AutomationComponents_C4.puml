@@ -1,0 +1,17 @@
+@startuml
+top to bottom direction
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+ContainerDb(db, "PostgreSQL", "Stores all data (MVP)")
+
+Container(automationService, "Automation Service", "Go") {
+    Component(api, "Automation API", "Gin", "Receives commands")
+    Component(service, "Automation Service Logic", "Go", "Processes commands")
+}
+
+Rel(api, service, "Calls")
+Rel(service, db, "SQL")
+
+@enduml

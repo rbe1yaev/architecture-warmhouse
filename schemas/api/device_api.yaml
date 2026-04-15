@@ -1,0 +1,160 @@
+openapi: 3.0.4
+
+info:
+  title: Smart Home Device API
+  version: 1.0.0
+
+servers:
+  - url: https://warm.house.ru/api/v1
+
+tags:
+  - name: device
+    description: Operations with smart home devices
+
+paths:
+
+  /device:
+    put:
+      tags: [device]
+      summary: Update device
+      operationId: updateDevice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceInput'
+      responses:
+        '200':
+          description: Updated device
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceResponse'
+        '404':
+          description: Device not found
+        '500':
+          description: Internal server error
+
+    post:
+      tags: [device]
+      summary: Create device
+      operationId: createDevice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceInput'
+      responses:
+        '200':
+          description: Device created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceResponse'
+
+    get:
+      tags: [device]
+      summary: Get device info
+      operationId: getDevice
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: Not found
+
+    delete:
+      tags: [device]
+      summary: Delete device
+      operationId: deleteDevice
+      responses:
+        '200':
+          description: Deleted
+        '404':
+          description: Not found
+
+  /device/status/{deviceId}:
+    get:
+      tags: [device]
+      summary: Get device status
+      operationId: getDeviceStatus
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Status returned
+          content:
+            application/json:
+              example:
+                deviceId: 1
+                status: ACTIVE
+        '404':
+          description: Device not found
+
+  /device/command/{deviceId}:
+    post:
+      tags: [device]
+      summary: Send command to device
+      operationId: sendCommand
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            example:
+              command: TURN_ON
+      responses:
+        '200':
+          description: Command executed
+          content:
+            application/json:
+              example:
+                result: OK
+
+components:
+  schemas:
+
+    DeviceInput:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        device_type:
+          type: string
+          enum:
+            - HeatingSystem
+            - Sensor
+            - Light
+        name:
+          type: string
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - INACTIVE
+
+    DeviceResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string

@@ -1,0 +1,21 @@
+@startuml
+top to bottom direction
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+System_Ext(devices, "IoT Devices", "Smart devices")
+ContainerDb(db, "PostgreSQL", "Stores all data (MVP)")
+
+Container(deviceService, "Device Service", "Go") {
+    Component(api, "Device API", "Gin", "Receives commands")
+    Component(service, "Device Service Logic", "Go", "Processes commands")
+    Component(controller, "Device Controller", "Go", "Communicates with devices")
+}
+
+Rel(api, service, "Calls")
+Rel(service, controller, "Uses")
+Rel(service, db, "SQL")
+Rel(controller, devices, "Device protocol")
+
+@enduml

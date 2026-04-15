@@ -1,0 +1,62 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+Person(user, "User")
+Person(admin, "Admin")
+
+System(system, "Smart Home System")
+System_Ext(payment, "Payment Service", "External payment service")
+System_Ext(extDevices, "IoT Devices", "Sensors and heating controllers")
+
+Container_Boundary(system, "Smart Home System") {
+
+    Container(api, "API Gateway", "Go", "Handles requests from users/admins")
+    Container(deviceAPI, "Device API Gateway", "Go", "Handles incoming requests from devices")
+
+    Container(userService, "User & Billing Service", "Go", "Manages users and subscriptions")
+    Container(automationService, "Automation Service", "Go", "Executes automation rules")
+    Container(deviceService, "Device Service", "Go", "Controls devices")
+    Container(telemetry, "Telemetry Service", "Go", "Processes telemetry")
+    Container(notification, "Notification Service", "Go", "Sends notifications")
+
+    Container(bus, "Event Bus", "RabbitMQ", "Event-driven communication")
+
+    ContainerDb(db, "PostgreSQL", "Stores all data (MVP)")
+}
+
+Rel(user, api, "Uses")
+Rel(admin, api, "Manages")
+
+Rel(api, userService, "HTTP")
+Rel(api, telemetry, "HTTP")
+Rel(api, deviceService, "HTTP")
+Rel(api, automationService, "HTTP")
+
+' Devices → system
+Rel(extDevices, deviceAPI, "Send data / receive commands")
+
+Rel(deviceAPI, telemetry, "Send telemetry")
+Rel(deviceAPI, deviceService, "Receive commands")
+
+' Sync работа с устройствами (MVP)
+Rel(deviceService, extDevices, "Send commands")
+Rel(telemetry, extDevices, "Read data")
+
+' Event-driven часть
+Rel(telemetry, bus, "Publish telemetry events")
+Rel(deviceService, bus, "Publish device state")
+
+Rel(bus, automationService, "Consume telemetry")
+Rel(automationService, deviceService, "Send commands")
+
+Rel(bus, notification, "Consume events")
+
+' DB
+Rel(userService, db, "SQL")
+Rel(deviceService, db, "SQL")
+Rel(telemetry, db, "SQL")
+
+' External
+Rel(userService, payment, "HTTP")
+
+@enduml

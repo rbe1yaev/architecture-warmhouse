@@ -1,0 +1,20 @@
+@startuml user_billing
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+Person(user, "User")
+
+ContainerDb(db, "PostgreSQL", "Stores all data (MVP)")
+System_Ext(payment, "Payment Service", "External payment service")
+
+Container_Boundary(userService, "User & Billing Service") {
+    Component(userAPI, "User API", "REST API (Go)", "Registration, autorisation, profile view")
+    Component(service, "User Service Logic", "Go", "Processes user account requests")
+}
+
+Rel(user, userAPI, "HTTP")
+Rel(userAPI, service, "Call")
+Rel(service, db, "SQL")
+Rel(service, payment, "HTTP")
+
+@enduml

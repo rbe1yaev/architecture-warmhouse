@@ -1,0 +1,21 @@
+@startuml
+top to bottom direction
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+Person(user, "User", "A user of warmhouse system")
+Person(admin, "Admin", "A staff from the company")
+
+System(service, "Warm House Service", "Heating and monitoring system + user data system")
+System_Ext(Sensors, "Temerature sensors", "Measure temperature")
+System_Ext(Heating, "Heating system controllers", "Can turn on/off heating")
+System_Ext(PaymantService, "Paymant Service", "External paymant service")
+
+Rel(admin, service, "Add new devices to the system")
+Rel(user, service, "Request temperature or switch on/off heating")
+Rel(service, Heating, "Control Heating system (On/Off)")
+Rel(service, Sensors, "Request temperature")
+Rel(service, PaymantService, "Request paymant")
+
+
+@enduml 

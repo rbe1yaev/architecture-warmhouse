@@ -1,0 +1,110 @@
+@startuml tobe_containers
+!include <C4/C4_Container>
+
+title Container Diagram — Тёплый дом (To-Be)
+
+Person(user, "Пользователь", "Управляет устройствами,\nпросматривает телеметрию\nи настраивает расписания")
+
+System_Boundary(smarthouse, "Экосистема Тёплый дом") {
+
+    Container(webapp, "Web App", "SPA / Microfrontends", "Оболочка с микрофронтендами:\nHeating, Lighting, Gate,\nSurveillance, Scheduling")
+
+    Container(gateway, "API Gateway", "REST / HTTPS", "Единая точка входа. Маршрутизация.\nStateless-валидация JWT по публичному\nключу; прокидывает X-User-Id сервисам")
+
+    ContainerQueue(events, "Event Channels", "AsyncAPI", "Каналы асинхронных событий\n(publish/subscribe).\nКонкретный брокер — деталь\nреализации")
+
+    Container(connectivity, "Device Connectivity Gateway", "IoT Gateway", "Граница с устройствами партнёров.\nДоставляет команды и принимает\nтелеметрию. Протоколы подключения\nявляются деталью реализации")
+
+    ' --- Core: управление устройствами ---
+    Container(heating, "Heating Control Service", "Microservice", "Управление отоплением:\nтемпература, вкл/выкл")
+    ContainerDb(heating_db, "Heating Store", "Реляционная СУБД", "Состояние\nотопительных устройств")
+
+    Container(lighting, "Lighting Control Service", "Microservice", "Управление освещением:\nвкл/выкл")
+    ContainerDb(lighting_db, "Lighting Store", "Реляционная СУБД", "Состояние\nосветительных устройств")
+
+    Container(gate, "Gate Control Service", "Microservice", "Управление воротами:\nоткрыть, закрыть, статус")
+    ContainerDb(gate_db, "Gate Store", "Реляционная СУБД", "Состояние ворот")
+
+    Container(surveillance, "Surveillance Service", "Microservice", "Управление камерами:\nвкл/выкл, просмотр видеопотока")
+    ContainerDb(surveillance_db, "Surveillance Store", "Реляционная СУБД", "Метаданные камер")
+
+    ' --- Supporting ---
+    Container(provisioning, "Device Provisioning Service", "Microservice", "Регистрация и управление\nустройствами. Адаптеры\nпо типу устройства")
+    ContainerDb(provisioning_db, "Provisioning Store", "Реляционная СУБД", "Реестр устройств,\nконфигурации, статусы")
+
+    Container(topology, "Home Topology Service", "Microservice", "Управление топологией:\nдома, комнаты")
+    ContainerDb(topology_db, "Topology Store", "Реляционная СУБД", "Дома, комнаты")
+
+    Container(telemetry, "Telemetry Service", "Microservice", "Приём, хранение\nи отображение метрик")
+    ContainerDb(telemetry_db, "Telemetry Store", "СУБД временны́х рядов", "Метрики устройств\nво времени")
+
+    Container(scheduling, "Scheduling Service", "Microservice", "Хранение и исполнение\nрасписаний. Публикует команды\nпо таймеру")
+    ContainerDb(scheduling_db, "Scheduling Store", "Реляционная СУБД", "Расписания\nи действия")
+
+    ' --- Generic ---
+    Container(iam, "IAM Service", "Microservice", "Регистрация, аутентификация\nи управление пользователями.\nВыдаёт JWT (access + refresh)")
+    ContainerDb(iam_db, "IAM Store", "Реляционная СУБД", "Пользователи\nи refresh-токены")
+}
+
+System_Ext(iot_devices, "IoT-устройства партнёров", "Термодатчики, реле,\nлампы, ворота, камеры")
+
+' ===================== Синхронные REST =====================
+Rel(user, webapp, "Использует", "HTTPS")
+Rel(webapp, gateway, "API-запросы", "REST / HTTPS")
+
+Rel(gateway, iam, "Аутентификация / выдача JWT.\nПолучение JWKS (публичный ключ)", "REST")
+Rel(gateway, provisioning, "Управление устройствами", "REST")
+Rel(gateway, topology, "CRUD локаций", "REST")
+Rel(gateway, heating, "Команды отопления", "REST")
+Rel(gateway, lighting, "Команды освещения", "REST")
+Rel(gateway, gate, "Команды ворот", "REST")
+Rel(gateway, surveillance, "Команды камер", "REST")
+Rel(gateway, scheduling, "CRUD расписаний", "REST")
+Rel(gateway, telemetry, "Запрос метрик", "REST")
+
+' ===================== Срабатывание расписаний (REST, с подтверждением) =====================
+Rel(scheduling, heating, "Срабатывание расписания", "REST")
+Rel(scheduling, lighting, "Срабатывание расписания", "REST")
+Rel(scheduling, gate, "Срабатывание расписания", "REST")
+Rel(scheduling, surveillance, "Срабатывание расписания", "REST")
+
+' ===================== Команды на устройства (REST, с подтверждением) =====================
+Rel(heating, connectivity, "SetTemperature,\nTurnHeatingOn/Off", "REST")
+Rel(lighting, connectivity, "SwitchLightOn/Off", "REST")
+Rel(gate, connectivity, "OpenGate, CloseGate", "REST")
+Rel(surveillance, connectivity, "EnableCamera,\nDisableCamera", "REST")
+Rel(connectivity, iot_devices, "Доставка команды\nна устройство", "IoT protocol")
+
+' ===================== Базы данных =====================
+Rel(iam, iam_db, "Читает/пишет")
+Rel(provisioning, provisioning_db, "Читает/пишет")
+Rel(topology, topology_db, "Читает/пишет")
+Rel(heating, heating_db, "Читает/пишет")
+Rel(lighting, lighting_db, "Читает/пишет")
+Rel(gate, gate_db, "Читает/пишет")
+Rel(surveillance, surveillance_db, "Читает/пишет")
+Rel(telemetry, telemetry_db, "Пишет метрики")
+Rel(scheduling, scheduling_db, "Читает/пишет")
+
+' ===================== Телеметрия (AsyncAPI) =====================
+Rel(iot_devices, connectivity, "Поток телеметрии", "IoT protocol")
+Rel(connectivity, telemetry, "Нормализованный\nпоток метрик", "AsyncAPI")
+
+' ===================== Доменные события (AsyncAPI) =====================
+Rel(provisioning, events, "publish: DeviceRegistered,\nDeviceDeactivated, DeviceRemoved", "AsyncAPI")
+Rel(events, heating, "subscribe: DeviceRegistered", "AsyncAPI")
+Rel(events, lighting, "subscribe: DeviceRegistered", "AsyncAPI")
+Rel(events, gate, "subscribe: DeviceRegistered", "AsyncAPI")
+Rel(events, surveillance, "subscribe: DeviceRegistered", "AsyncAPI")
+
+Rel(heating, events, "publish: HeatingToggled,\nTemperatureSet", "AsyncAPI")
+Rel(lighting, events, "publish: LightToggled", "AsyncAPI")
+Rel(gate, events, "publish: GateOpened,\nGateClosed", "AsyncAPI")
+Rel(surveillance, events, "publish: CameraEnabled,\nCameraDisabled", "AsyncAPI")
+Rel(events, telemetry, "subscribe: доменные события", "AsyncAPI")
+
+Rel(topology, events, "publish: HomeAdded,\nRoomAdded, RoomRemoved", "AsyncAPI")
+Rel(events, provisioning, "subscribe: RoomRemoved", "AsyncAPI")
+
+SHOW_LEGEND()
+@enduml

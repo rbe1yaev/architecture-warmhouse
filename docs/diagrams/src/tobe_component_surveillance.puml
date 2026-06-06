@@ -1,0 +1,46 @@
+@startuml tobe_component_surveillance
+!include <C4/C4_Component>
+
+title Component Diagram — Surveillance Service (To-Be)
+
+Container(gateway, "API Gateway", "REST / HTTPS", "Единая точка входа для\nпользовательских команд")
+Container(scheduling, "Scheduling Service", "Microservice", "Вызывает команды камер\nпо расписанию (REST)")
+Container(provisioning, "Device Provisioning Service", "Microservice", "Владеет жизненным циклом\nподключения устройств")
+Container(connectivity, "Device Connectivity Gateway", "IoT Gateway", "Принимает команды по REST\nи доставляет на устройство")
+Container(telemetry, "Telemetry Service", "Microservice", "Собирает метрики и события\nдля мониторинга")
+ContainerQueue(events, "Event Channels", "AsyncAPI", "Каналы асинхронных событий\n(publish/subscribe)")
+ContainerDb(surveillance_db, "Surveillance Store", "Реляционная СУБД", "Метаданные камер\nи состояние")
+
+Container_Boundary(surveillance, "Surveillance Service") {
+    Component(api, "Surveillance API Controller", "REST API", "Принимает EnableCamera,\nDisableCamera и запросы видеопотока\nот пользователя и из расписаний")
+    Component(command_handler, "Surveillance Command Handler", "Application Component", "Оркестрирует команды камер")
+    Component(device_projection, "Camera Device Projection", "Read Model", "Локальный список активных\nкамер")
+    Component(lifecycle_events, "Device Lifecycle Event Handler", "AsyncAPI subscriber", "Обрабатывает события жизненного\nцикла camera-устройств")
+    Component(camera_model, "Camera Aggregate", "Domain Model", "Проверяет инварианты камеры:\nактивность и доступность потока")
+    Component(stream_manager, "Stream Manager", "Application Component", "Готовит ссылки на live-stream\n(видеопоток идёт вне Event Channels:\nмедиа-тракт RTSP/WebRTC/HLS)")
+    Component(repository, "Camera Repository", "Repository", "Сохраняет метаданные камер\nи состояние")
+    Component(event_publisher, "Domain Event Publisher", "AsyncAPI publisher", "Публикует CameraEnabled\nи CameraDisabled")
+    Component(connectivity_client, "Connectivity Client", "REST client", "Вызывает Device Connectivity\nGateway и получает подтверждение\nисполнения команды")
+}
+
+Rel(gateway, api, "Команды камер и запросы видео", "REST / OpenAPI")
+Rel(api, command_handler, "Передаёт команду")
+Rel(scheduling, api, "Срабатывание расписания", "REST / OpenAPI")
+Rel(api, stream_manager, "Запрашивает live-stream")
+Rel(command_handler, device_projection, "Проверяет активную камеру")
+Rel(command_handler, camera_model, "Создаёт/изменяет агрегат")
+Rel(command_handler, repository, "Сохраняет состояние")
+Rel(repository, surveillance_db, "Читает/пишет")
+Rel(device_projection, surveillance_db, "Читает/пишет\nпроекцию устройств")
+Rel(command_handler, event_publisher, "Передаёт доменные события")
+Rel(command_handler, connectivity_client, "Передаёт команду камеры")
+Rel(connectivity_client, connectivity, "EnableCamera,\nDisableCamera", "REST")
+
+Rel(provisioning, events, "publish: DeviceRegistered,\nDeviceDeactivated, DeviceRemoved", "AsyncAPI")
+Rel(events, lifecycle_events, "subscribe: camera lifecycle events", "AsyncAPI")
+Rel(lifecycle_events, device_projection, "Обновляет проекцию")
+Rel(event_publisher, events, "publish: CameraEnabled,\nCameraDisabled", "AsyncAPI")
+Rel(events, telemetry, "subscribe: события камер", "AsyncAPI")
+
+SHOW_LEGEND()
+@enduml

@@ -1,0 +1,217 @@
+@startuml tobe_er
+
+title ER Diagram — Тёплый дом (To-Be)
+
+hide circle
+skinparam linetype ortho
+skinparam packageStyle rectangle
+
+legend right
+  Межсервисные связи являются логическими ссылками по идентификаторам,
+  а не физическими внешними ключами между базами данных разных сервисов.
+endlegend
+
+package "IAM Service" {
+    entity "User" as user {
+        * id : UUID <<PK>>
+        --
+        email : string
+        name : string
+        status : string
+        created_at : datetime
+        updated_at : datetime
+    }
+
+    entity "UserRefreshToken" as user_session {
+        * id : UUID <<PK>>
+        --
+        user_id : UUID <<FK>>
+        refresh_token : string
+        expires_at : datetime
+        created_at : datetime
+    }
+}
+
+package "Home Topology Service" {
+    entity "Home" as home {
+        * id : UUID <<PK>>
+        --
+        owner_user_id : UUID <<logical ref User.id>>
+        name : string
+        address : string
+        created_at : datetime
+        updated_at : datetime
+    }
+
+    entity "Room" as room {
+        * id : UUID <<PK>>
+        --
+        home_id : UUID <<FK>>
+        name : string
+        room_type : string
+        created_at : datetime
+        updated_at : datetime
+    }
+}
+
+package "Device Provisioning Service" {
+    entity "DeviceType" as device_type {
+        * id : UUID <<PK>>
+        --
+        code : string
+        name : string
+        capabilities : json
+        is_active : boolean
+    }
+
+    entity "Device" as device {
+        * id : UUID <<PK>>
+        --
+        type_id : UUID <<FK>>
+        owner_user_id : UUID <<logical ref User.id>>
+        home_id : UUID <<logical ref Home.id>>
+        room_id : UUID <<logical ref Room.id>>
+        serial_number : string
+        connection_status : string
+        created_at : datetime
+        updated_at : datetime
+    }
+
+    entity "DeviceRegistration" as device_registration {
+        * id : UUID <<PK>>
+        --
+        device_id : UUID <<FK>>
+        registration_status : string
+        requested_by_user_id : UUID <<logical ref User.id>>
+        registered_at : datetime
+        activated_at : datetime
+    }
+
+    entity "DeviceConfig" as device_config {
+        * id : UUID <<PK>>
+        --
+        device_id : UUID <<FK>>
+        config_payload : json
+        version : integer
+        created_at : datetime
+    }
+}
+
+package "Heating Control Service" {
+    entity "HeatingDeviceState" as heating_state {
+        * device_id : UUID <<PK, logical ref Device.id>>
+        --
+        target_temperature : decimal
+        current_mode : string
+        relay_status : string
+        updated_at : datetime
+    }
+}
+
+package "Lighting Control Service" {
+    entity "LightingDeviceState" as lighting_state {
+        * device_id : UUID <<PK, logical ref Device.id>>
+        --
+        power_status : string
+        updated_at : datetime
+    }
+}
+
+package "Gate Control Service" {
+    entity "GateDeviceState" as gate_state {
+        * device_id : UUID <<PK, logical ref Device.id>>
+        --
+        gate_state : string
+        last_command : string
+        updated_at : datetime
+    }
+}
+
+package "Surveillance Service" {
+    entity "CameraState" as camera_state {
+        * device_id : UUID <<PK, logical ref Device.id>>
+        --
+        power_status : string
+        stream_url : string
+        updated_at : datetime
+    }
+}
+
+package "Telemetry Service" {
+    entity "MetricStream" as metric_stream {
+        * id : UUID <<PK>>
+        --
+        device_id : UUID <<logical ref Device.id>>
+        home_id : UUID <<logical ref Home.id>>
+        room_id : UUID <<logical ref Room.id>>
+        metric_type : string
+        unit : string
+        created_at : datetime
+    }
+
+    entity "MetricPoint" as metric_point {
+        * id : UUID <<PK>>
+        --
+        stream_id : UUID <<FK>>
+        value : decimal
+        value_payload : json
+        status : string
+        timestamp : datetime
+    }
+
+}
+
+package "Scheduling Service" {
+    entity "Schedule" as schedule {
+        * id : UUID <<PK>>
+        --
+        owner_user_id : UUID <<logical ref User.id>>
+        home_id : UUID <<logical ref Home.id>>
+        room_id : UUID <<logical ref Room.id>>
+        name : string
+        time_slot : string
+        status : string
+        created_at : datetime
+        updated_at : datetime
+    }
+
+    entity "ScheduledAction" as scheduled_action {
+        * id : UUID <<PK>>
+        --
+        schedule_id : UUID <<FK>>
+        target_device_id : UUID <<logical ref Device.id>>
+        action_type : string
+        action_payload : json
+        execution_order : integer
+    }
+}
+
+user ||--o{ user_session : "has refresh tokens"
+
+user ||..o{ home : owns
+home ||--o{ room : contains
+
+user ||..o{ device : owns
+home ||..o{ device : contains
+room ||..o{ device : contains
+device_type ||--o{ device : classifies
+device ||--o{ device_registration : has
+device ||--o{ device_config : configured_by
+
+device ||..o| heating_state : controlled_as
+device ||..o| lighting_state : controlled_as
+device ||..o| gate_state : controlled_as
+device ||..o| camera_state : controlled_as
+
+device ||..o{ metric_stream : emits
+home ||..o{ metric_stream : groups
+room ||..o{ metric_stream : groups
+metric_stream ||--o{ metric_point : contains
+
+user ||..o{ schedule : owns
+home ||..o{ schedule : scoped_to
+room ||..o{ schedule : scoped_to
+schedule ||--o{ scheduled_action : includes
+device ||..o{ scheduled_action : targets
+
+@enduml

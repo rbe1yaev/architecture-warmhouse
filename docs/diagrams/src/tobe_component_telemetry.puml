@@ -1,0 +1,45 @@
+@startuml tobe_component_telemetry
+!include <C4/C4_Component>
+
+title Component Diagram — Telemetry Service (To-Be)
+
+Container(gateway, "API Gateway", "REST / HTTPS", "Единая точка входа для\nзапросов метрик и дашбордов")
+Container(connectivity, "Device Connectivity Gateway", "IoT Gateway", "Нормализует входящую\nтелеметрию устройств")
+Container(control_services, "Control Services", "Microservices", "Heating, Lighting, Gate,\nSurveillance Control Services")
+Container(topology, "Home Topology Service", "Microservice", "Владеет домами\nи комнатами")
+ContainerQueue(events, "Event Channels", "AsyncAPI", "Каналы асинхронных событий\n(publish/subscribe)")
+ContainerDb(telemetry_db, "Telemetry Store", "СУБД временны́х рядов", "Метрики устройств\nво времени")
+
+Container_Boundary(telemetry, "Telemetry Service") {
+    Component(query_api, "Telemetry Query API", "REST API", "Возвращает историю метрик,\nагрегации и дашборды")
+    Component(ingest_handler, "Metric Ingest Handler", "AsyncAPI subscriber", "Принимает нормализованный\nпоток метрик от устройств")
+    Component(domain_event_handler, "Domain Event Handler", "AsyncAPI subscriber", "Принимает события control-сервисов\nкак дополнительный поток фактов")
+    Component(topology_events, "Topology Event Handler", "AsyncAPI subscriber", "Обновляет проекцию локаций\nдля группировки метрик")
+    Component(metric_parser, "Metric Parser Registry", "Application Component", "Выбирает парсер по MetricType:\ntemperature, light_state, gate_state,\nvideo_status")
+    Component(metric_stream, "MetricStream Aggregate", "Domain Model", "Проверяет поток метрик\nи формирует MetricPoint")
+    Component(location_projection, "Location Projection", "Read Model", "Локальная проекция Home/Room\nдля фильтрации и дашбордов")
+    Component(repository, "Telemetry Repository", "Time-series client", "Пишет и читает временные ряды")
+    Component(event_publisher, "Domain Event Publisher", "AsyncAPI publisher", "Публикует MetricReceived\nи DeviceDataStale")
+}
+
+Rel(gateway, query_api, "Запросы метрик и дашбордов", "REST / OpenAPI")
+Rel(query_api, repository, "Читает метрики")
+Rel(query_api, location_projection, "Фильтрует по локациям")
+Rel(connectivity, events, "publish: normalized telemetry", "AsyncAPI")
+Rel(control_services, events, "publish: доменные события\nуправления устройствами", "AsyncAPI")
+Rel(topology, events, "publish: HomeAdded,\nRoomAdded, RoomRemoved", "AsyncAPI")
+Rel(events, ingest_handler, "subscribe: telemetry stream", "AsyncAPI")
+Rel(events, domain_event_handler, "subscribe: device domain events", "AsyncAPI")
+Rel(events, topology_events, "subscribe: topology events", "AsyncAPI")
+Rel(ingest_handler, metric_parser, "Нормализует payload")
+Rel(metric_parser, metric_stream, "Формирует MetricPoint")
+Rel(domain_event_handler, metric_stream, "Преобразует события\nв метрики состояния")
+Rel(metric_stream, repository, "Сохраняет метрику")
+Rel(repository, telemetry_db, "Читает/пишет")
+Rel(metric_stream, event_publisher, "Передаёт MetricReceived")
+Rel(topology_events, location_projection, "Обновляет проекцию")
+Rel(location_projection, telemetry_db, "Читает/пишет\nпроекцию локаций")
+Rel(event_publisher, events, "publish: MetricReceived,\nDeviceDataStale", "AsyncAPI")
+
+SHOW_LEGEND()
+@enduml

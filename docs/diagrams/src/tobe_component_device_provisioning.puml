@@ -1,0 +1,42 @@
+@startuml tobe_component_device_provisioning
+!include <C4/C4_Component>
+
+title Component Diagram — Device Provisioning Service (To-Be)
+
+Container(gateway, "API Gateway", "REST / HTTPS", "Единая точка входа для\nпользовательских команд")
+Container(topology, "Home Topology Service", "Microservice", "Владеет домами, комнатами\nи зонами пользователя")
+ContainerQueue(events, "Event Channels", "AsyncAPI", "Каналы асинхронных событий\n(publish/subscribe)")
+ContainerDb(provisioning_db, "Provisioning Store", "Реляционная СУБД", "Реестр устройств,\nконфигурации, статусы,\nпроекция локаций")
+Container(control_services, "Control Services", "Microservices", "Heating, Lighting, Gate,\nSurveillance Control Services")
+
+Container_Boundary(provisioning, "Device Provisioning Service") {
+    Component(api, "Device API Controller", "REST API", "Принимает команды регистрации,\nактивации, деактивации и удаления\nустройств")
+    Component(command_handler, "Provisioning Command Handler", "Application Component", "Оркестрирует сценарии подключения\nустройств и транзакционные изменения")
+    Component(device_model, "Device Aggregate", "Domain Model", "Проверяет инварианты устройства:\nтип, статус подключения, locationId,\nконфигурация")
+    Component(adapter_registry, "Device Type Adapter Registry", "Application Component", "Выбирает адаптер по DeviceType\nи изолирует специфику типов устройств")
+    Component(type_adapters, "Device Type Adapters", "Application Component", "Heating, Lighting, Gate, Camera\nадаптеры: валидация config\nи подготовка type-specific metadata")
+    Component(location_projection, "Location Projection", "Read Model", "Локальная проекция Home/Room\nдля проверки locationId без владения\nтопологией")
+    Component(topology_events, "Topology Event Handler", "AsyncAPI subscriber", "Обрабатывает HomeAdded, RoomAdded,\nRoomRemoved и обновляет проекцию\nлокаций")
+    Component(repository, "Device Repository", "Repository", "Сохраняет и загружает агрегаты\nDevice и DeviceRegistration")
+    Component(event_publisher, "Domain Event Publisher", "AsyncAPI publisher", "Публикует DeviceRegistered,\nDeviceActivated, DeviceDeactivated,\nDeviceRemoved")
+}
+
+Rel(gateway, api, "Команды управления устройствами", "REST / OpenAPI")
+Rel(api, command_handler, "Передаёт команду")
+Rel(command_handler, location_projection, "Проверяет locationId")
+Rel(command_handler, adapter_registry, "Выбирает адаптер\nпо deviceType")
+Rel(adapter_registry, type_adapters, "Делегирует type-specific\nвалидацию config")
+Rel(command_handler, device_model, "Создаёт/изменяет агрегат")
+Rel(command_handler, repository, "Сохраняет изменения")
+Rel(repository, provisioning_db, "Читает/пишет")
+Rel(location_projection, provisioning_db, "Читает/пишет\nпроекцию локаций")
+Rel(command_handler, event_publisher, "Передаёт доменные события")
+Rel(event_publisher, events, "publish: DeviceRegistered,\nDeviceActivated, DeviceRemoved", "AsyncAPI")
+
+Rel(topology, events, "publish: HomeAdded,\nRoomAdded, RoomRemoved", "AsyncAPI")
+Rel(events, topology_events, "subscribe: события топологии", "AsyncAPI")
+Rel(topology_events, location_projection, "Обновляет проекцию")
+Rel(events, control_services, "subscribe: события жизненного\nцикла устройств", "AsyncAPI")
+
+SHOW_LEGEND()
+@enduml

@@ -1,0 +1,528 @@
+asyncapi: 3.0.0
+info:
+  title: Smart Home — Async Events API
+  version: 1.0.0
+  description: |
+    Асинхронные события экосистемы «Тёплый дом».
+
+    Документирует publish/subscribe взаимодействия между микросервисами.
+    Конкретный транспортный брокер является деталью реализации и не
+    фиксируется на уровне архитектуры — каналы описываются в терминах
+    AsyncAPI.
+
+    **Три группы событий:**
+    1. **Жизненный цикл устройств** — Device Provisioning Service публикует
+       события при регистрации и деактивации устройств. Подписчики —
+       Heating / Lighting / Gate / Surveillance Control Services.
+    2. **Доменные события управления** — Control Services публикуют события
+       об изменении состояния устройств. Подписчик — Telemetry Service.
+    3. **Телеметрия** — Device Connectivity Gateway нормализует поток данных
+       от физических IoT-устройств и публикует метрики. Подписчик —
+       Telemetry Service.
+    4. **Топология** — Home Topology Service публикует события структурных
+       изменений (удаление комнат). Подписчик — Device Provisioning Service.
+
+servers:
+  eventChannels:
+    host: event-channels
+    protocol: http
+    description: |
+      Абстрактные каналы событий (конкретный брокер — деталь реализации).
+      В production может быть RabbitMQ, Kafka или другой транспорт.
+
+channels:
+  deviceRegistered:
+    address: device.lifecycle.registered
+    description: |
+      Событие успешной регистрации нового устройства в экосистеме.
+
+      **Публикует:** Device Provisioning Service
+      **Подписчики:** Heating Control Service, Lighting Control Service,
+      Gate Control Service, Surveillance Service
+
+      При получении события соответствующий Control Service инициализирует
+      запись устройства в своей базе данных и готовится к приёму команд.
+    messages:
+      DeviceRegistered:
+        $ref: '#/components/messages/DeviceRegistered'
+
+  deviceDeactivated:
+    address: device.lifecycle.deactivated
+    description: |
+      Событие деактивации устройства (вручную или при обнаружении offline).
+
+      **Публикует:** Device Provisioning Service
+      **Подписчики:** Heating Control Service, Lighting Control Service,
+      Gate Control Service, Surveillance Service
+
+      Control Services прекращают отправлять команды деактивированному
+      устройству и обновляют его статус у себя.
+    messages:
+      DeviceDeactivated:
+        $ref: '#/components/messages/DeviceDeactivated'
+
+  heatingToggled:
+    address: control.heating.toggled
+    description: |
+      Событие изменения состояния отопительного устройства
+      (включено / выключено / изменена целевая температура).
+
+      **Публикует:** Heating Control Service
+      **Подписчик:** Telemetry Service
+
+      Telemetry Service записывает событие в time-series хранилище
+      для дашбордов и алертов.
+    messages:
+      HeatingToggled:
+        $ref: '#/components/messages/HeatingToggled'
+
+  telemetryReceived:
+    address: telemetry.device.metric
+    description: |
+      Нормализованный поток телеметрии от IoT-устройств.
+
+      **Публикует:** Device Connectivity Gateway
+      **Подписчик:** Telemetry Service
+
+      Gateway принимает сырые данные от физических устройств партнёров
+      (по MQTT, CoAP, HTTP — деталь реализации), нормализует их в
+      единый формат MetricPoint и публикует в этот канал.
+    messages:
+      TelemetryReceived:
+        $ref: '#/components/messages/TelemetryReceived'
+
+  roomRemoved:
+    address: topology.room.removed
+    description: |
+      Событие удаления комнаты из топологии дома.
+
+      **Публикует:** Home Topology Service
+      **Подписчик:** Device Provisioning Service
+
+      Device Provisioning Service при получении события проверяет,
+      есть ли устройства, привязанные к удалённой комнате,
+      и переводит их в статус `inactive` (устройства остаются в системе,
+      но теряют привязку к локации).
+    messages:
+      RoomRemoved:
+        $ref: '#/components/messages/RoomRemoved'
+
+operations:
+  publishDeviceRegistered:
+    action: send
+    channel:
+      $ref: '#/channels/deviceRegistered'
+    summary: Device Provisioning публикует событие регистрации устройства
+    tags:
+      - name: lifecycle
+      - name: provisioning
+
+  receiveDeviceRegistered:
+    action: receive
+    channel:
+      $ref: '#/channels/deviceRegistered'
+    summary: Control Services подписываются на событие регистрации устройства
+    tags:
+      - name: lifecycle
+      - name: control
+
+  publishDeviceDeactivated:
+    action: send
+    channel:
+      $ref: '#/channels/deviceDeactivated'
+    summary: Device Provisioning публикует событие деактивации устройства
+    tags:
+      - name: lifecycle
+      - name: provisioning
+
+  receiveDeviceDeactivated:
+    action: receive
+    channel:
+      $ref: '#/channels/deviceDeactivated'
+    summary: Control Services подписываются на событие деактивации устройства
+    tags:
+      - name: lifecycle
+      - name: control
+
+  publishHeatingToggled:
+    action: send
+    channel:
+      $ref: '#/channels/heatingToggled'
+    summary: Heating Control Service публикует событие изменения состояния отопления
+    tags:
+      - name: domain-event
+      - name: heating
+
+  receiveHeatingToggled:
+    action: receive
+    channel:
+      $ref: '#/channels/heatingToggled'
+    summary: Telemetry Service получает события изменения состояния отопления
+    tags:
+      - name: domain-event
+      - name: telemetry
+
+  publishTelemetryReceived:
+    action: send
+    channel:
+      $ref: '#/channels/telemetryReceived'
+    summary: Device Connectivity Gateway публикует нормализованную телеметрию
+    tags:
+      - name: telemetry
+      - name: gateway
+
+  receiveTelemetryReceived:
+    action: receive
+    channel:
+      $ref: '#/channels/telemetryReceived'
+    summary: Telemetry Service получает нормализованные метрики от устройств
+    tags:
+      - name: telemetry
+
+  publishRoomRemoved:
+    action: send
+    channel:
+      $ref: '#/channels/roomRemoved'
+    summary: Home Topology Service публикует событие удаления комнаты
+    tags:
+      - name: topology
+
+  receiveRoomRemoved:
+    action: receive
+    channel:
+      $ref: '#/channels/roomRemoved'
+    summary: Device Provisioning подписывается на событие удаления комнаты
+    tags:
+      - name: topology
+      - name: provisioning
+
+components:
+  messages:
+    DeviceRegistered:
+      name: DeviceRegistered
+      title: Устройство зарегистрировано
+      summary: |
+        Публикуется Device Provisioning Service после успешной регистрации
+        нового устройства. Содержит всю информацию, необходимую Control
+        Service для инициализации устройства в своём домене.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/DeviceRegisteredPayload'
+      examples:
+        - name: heating_device_registered
+          summary: Регистрация термодатчика
+          payload:
+            eventId: "evt-11111111-2222-3333-4444-555555555555"
+            eventType: "DeviceRegistered"
+            occurredAt: "2026-06-06T10:00:00Z"
+            deviceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            deviceType: "heating"
+            deviceName: "Термодатчик гостиная"
+            locationId: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+            config:
+              minTemperature: 10
+              maxTemperature: 35
+              calibrationOffset: 0.5
+
+    DeviceDeactivated:
+      name: DeviceDeactivated
+      title: Устройство деактивировано
+      summary: |
+        Публикуется Device Provisioning Service при переводе устройства
+        в статус `inactive` (вручную) или при обнаружении длительного
+        отсутствия связи с устройством.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/DeviceDeactivatedPayload'
+      examples:
+        - name: gate_device_deactivated
+          summary: Деактивация привода ворот
+          payload:
+            eventId: "evt-aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+            eventType: "DeviceDeactivated"
+            occurredAt: "2026-06-06T12:00:00Z"
+            deviceId: "f9e8d7c6-b5a4-3210-fedc-ba9876543210"
+            deviceType: "gate"
+            reason: "manual"
+
+    HeatingToggled:
+      name: HeatingToggled
+      title: Состояние отопления изменено
+      summary: |
+        Публикуется Heating Control Service при изменении состояния
+        отопительного устройства: включении, выключении или изменении
+        целевой температуры.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/HeatingToggledPayload'
+      examples:
+        - name: heating_turned_on
+          summary: Отопление включено
+          payload:
+            eventId: "evt-12345678-abcd-1234-abcd-123456789012"
+            eventType: "HeatingToggled"
+            occurredAt: "2026-06-06T08:00:00Z"
+            deviceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            locationId: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+            action: "turn_on"
+            targetTemperature: 22.0
+            initiatedBy: "schedule"
+            scheduleId: "sched-99999999-8888-7777-6666-555555555555"
+        - name: heating_temperature_changed
+          summary: Изменена целевая температура
+          payload:
+            eventId: "evt-99887766-5544-3322-1100-aabbccddeeff"
+            eventType: "HeatingToggled"
+            occurredAt: "2026-06-06T09:30:00Z"
+            deviceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            locationId: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+            action: "set_temperature"
+            targetTemperature: 24.5
+            initiatedBy: "user"
+            userId: "user-11111111-2222-3333-4444-555555555555"
+
+    TelemetryReceived:
+      name: TelemetryReceived
+      title: Получена метрика от устройства
+      summary: |
+        Публикуется Device Connectivity Gateway после нормализации
+        сырых данных от IoT-устройства партнёра. Единый формат MetricPoint
+        для всех типов устройств и протоколов.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/TelemetryReceivedPayload'
+      examples:
+        - name: temperature_metric
+          summary: Метрика температуры
+          payload:
+            eventId: "evt-telemetry-1234-5678-abcd-ef1234567890"
+            eventType: "TelemetryReceived"
+            occurredAt: "2026-06-06T10:15:30Z"
+            deviceId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            locationId: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+            metricType: "temperature"
+            value: 21.7
+            unit: "celsius"
+            deviceTimestamp: "2026-06-06T10:15:28Z"
+        - name: gate_state_metric
+          summary: Метрика состояния ворот
+          payload:
+            eventId: "evt-telemetry-gate-9999-aaaa-bbbbbbbbbbbb"
+            eventType: "TelemetryReceived"
+            occurredAt: "2026-06-06T10:20:00Z"
+            deviceId: "f9e8d7c6-b5a4-3210-fedc-ba9876543210"
+            locationId: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+            metricType: "gate_state"
+            value: 1
+            unit: "state"
+            metadata:
+              state: "open"
+            deviceTimestamp: "2026-06-06T10:19:58Z"
+
+    RoomRemoved:
+      name: RoomRemoved
+      title: Комната удалена из топологии
+      summary: |
+        Публикуется Home Topology Service при удалении комнаты.
+        Device Provisioning Service подписывается для проверки
+        устройств, привязанных к удалённой комнате.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/RoomRemovedPayload'
+      examples:
+        - name: room_removed
+          summary: Комната удалена
+          payload:
+            eventId: "evt-topology-room-1234-5678-aabbccddeeff"
+            eventType: "RoomRemoved"
+            occurredAt: "2026-06-06T14:00:00Z"
+            homeId: "home-11111111-2222-3333-4444-555555555555"
+            roomId: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+            roomName: "Гостиная"
+            initiatedBy: "user-11111111-2222-3333-4444-555555555555"
+
+  schemas:
+    EventEnvelope:
+      type: object
+      description: Общие поля для всех доменных событий (envelope)
+      required:
+        - eventId
+        - eventType
+        - occurredAt
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор события (для идемпотентности)
+          example: "evt-11111111-2222-3333-4444-555555555555"
+        eventType:
+          type: string
+          description: Тип события (дискриминатор)
+          example: "DeviceRegistered"
+        occurredAt:
+          type: string
+          format: date-time
+          description: Время возникновения события (UTC)
+          example: "2026-06-06T10:00:00Z"
+
+    DeviceRegisteredPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required:
+            - deviceId
+            - deviceType
+            - deviceName
+            - locationId
+          properties:
+            deviceId:
+              type: string
+              format: uuid
+              description: Идентификатор зарегистрированного устройства
+            deviceType:
+              type: string
+              enum: [heating, lighting, gate, surveillance]
+              description: Тип устройства
+            deviceName:
+              type: string
+              description: Название устройства
+            locationId:
+              type: string
+              format: uuid
+              description: Идентификатор комнаты
+            config:
+              type: object
+              description: Начальная конфигурация устройства
+              additionalProperties: true
+
+    DeviceDeactivatedPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required:
+            - deviceId
+            - deviceType
+            - reason
+          properties:
+            deviceId:
+              type: string
+              format: uuid
+              description: Идентификатор деактивированного устройства
+            deviceType:
+              type: string
+              enum: [heating, lighting, gate, surveillance]
+              description: Тип устройства
+            reason:
+              type: string
+              enum: [manual, offline_timeout]
+              description: |
+                Причина деактивации:
+                - `manual` — деактивировано вручную сотрудником
+                - `offline_timeout` — устройство не выходило на связь дольше допустимого
+
+    HeatingToggledPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required:
+            - deviceId
+            - locationId
+            - action
+            - initiatedBy
+          properties:
+            deviceId:
+              type: string
+              format: uuid
+              description: Идентификатор отопительного устройства
+            locationId:
+              type: string
+              format: uuid
+              description: Идентификатор комнаты
+            action:
+              type: string
+              enum: [turn_on, turn_off, set_temperature]
+              description: Выполненное действие
+            targetTemperature:
+              type: number
+              format: float
+              description: Целевая температура (если применимо)
+              example: 22.0
+            initiatedBy:
+              type: string
+              enum: [user, schedule]
+              description: Инициатор действия — пользователь или расписание
+            userId:
+              type: string
+              format: uuid
+              description: ID пользователя (если initiatedBy = user)
+            scheduleId:
+              type: string
+              format: uuid
+              description: ID расписания (если initiatedBy = schedule)
+
+    TelemetryReceivedPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required:
+            - deviceId
+            - locationId
+            - metricType
+            - value
+            - unit
+            - deviceTimestamp
+          properties:
+            deviceId:
+              type: string
+              format: uuid
+              description: Идентификатор устройства-источника метрики
+            locationId:
+              type: string
+              format: uuid
+              description: Идентификатор комнаты, к которой привязано устройство
+            metricType:
+              type: string
+              enum: [temperature, brightness, gate_state, camera_status]
+              description: Тип метрики
+            value:
+              type: number
+              description: Числовое значение метрики
+              example: 21.7
+            unit:
+              type: string
+              description: Единица измерения (celsius, percent, state и т.д.)
+              example: "celsius"
+            metadata:
+              type: object
+              description: Дополнительные данные, специфичные для типа устройства
+              additionalProperties: true
+            deviceTimestamp:
+              type: string
+              format: date-time
+              description: Время измерения на самом устройстве (может отличаться от occurredAt)
+
+    RoomRemovedPayload:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          required:
+            - homeId
+            - roomId
+            - roomName
+            - initiatedBy
+          properties:
+            homeId:
+              type: string
+              format: uuid
+              description: Идентификатор дома, из которого удалена комната
+            roomId:
+              type: string
+              format: uuid
+              description: Идентификатор удалённой комнаты
+            roomName:
+              type: string
+              description: Название удалённой комнаты (для логирования)
+            initiatedBy:
+              type: string
+              format: uuid
+              description: Идентификатор пользователя, выполнившего удаление

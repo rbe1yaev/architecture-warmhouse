@@ -1,0 +1,46 @@
+@startuml tobe_component_scheduling
+!include <C4/C4_Component>
+
+title Component Diagram — Scheduling Service (To-Be)
+
+Container(gateway, "API Gateway", "REST / HTTPS", "Единая точка входа для\nуправления расписаниями")
+Container(control_services, "Control Services", "Microservices", "Heating, Lighting, Gate,\nSurveillance Control Services\n(вызываются по REST)")
+Container(topology, "Home Topology Service", "Microservice", "Владеет домами\nи комнатами")
+ContainerQueue(events, "Event Channels", "AsyncAPI", "Каналы асинхронных событий\n(publish/subscribe)")
+ContainerDb(scheduling_db, "Scheduling Store", "Реляционная СУБД", "Расписания\nи действия")
+
+Container_Boundary(scheduling, "Scheduling Service") {
+    Component(api, "Scheduling API Controller", "REST API", "Принимает CreateSchedule,\nActivateSchedule, DeactivateSchedule,\nDeleteSchedule")
+    Component(command_handler, "Schedule Command Handler", "Application Component", "Оркестрирует изменения\nрасписаний")
+    Component(query_service, "Schedule Query Service", "Application Component", "Возвращает расписания")
+    Component(location_projection, "Location Projection", "Read Model", "Локальная проекция Home/Room\nдля расписаний по локациям")
+    Component(topology_events, "Topology Event Handler", "AsyncAPI subscriber", "Обновляет проекцию локаций\nи отключает расписания удалённых комнат")
+    Component(schedule_model, "Schedule Aggregate", "Domain Model", "Проверяет TimeSlot,\nActionPayload и активность расписания")
+    Component(trigger_engine, "Schedule Trigger Engine", "Application Component", "Находит due-расписания\nи запускает действия по таймеру")
+    Component(control_client, "Control Service Client", "REST client", "Вызывает нужный control-сервис\nс ActionPayload и получает\nподтверждение исполнения")
+    Component(repository, "Schedule Repository", "Repository", "Сохраняет расписания")
+    Component(event_publisher, "Domain Event Publisher", "AsyncAPI publisher", "Публикует ScheduleCreated,\nScheduleTriggered, ActionExecuted,\nActionFailed")
+}
+
+Rel(gateway, api, "CRUD расписаний", "REST / OpenAPI")
+Rel(api, command_handler, "Передаёт команду")
+Rel(api, query_service, "Запрашивает расписания")
+Rel(command_handler, location_projection, "Проверяет locationId")
+Rel(command_handler, schedule_model, "Создаёт/изменяет агрегат")
+Rel(command_handler, repository, "Сохраняет изменения")
+Rel(query_service, repository, "Читает расписания")
+Rel(repository, scheduling_db, "Читает/пишет")
+Rel(location_projection, scheduling_db, "Читает/пишет\nпроекцию локаций")
+Rel(trigger_engine, repository, "Ищет due-расписания")
+Rel(trigger_engine, control_client, "Передаёт ActionPayload")
+Rel(trigger_engine, event_publisher, "Передаёт события выполнения")
+Rel(command_handler, event_publisher, "Передаёт события изменения")
+Rel(control_client, control_services, "Срабатывание расписания\n(ActionPayload)", "REST / OpenAPI")
+Rel(event_publisher, events, "publish: ScheduleCreated,\nScheduleTriggered, ActionExecuted, ActionFailed", "AsyncAPI")
+
+Rel(topology, events, "publish: HomeAdded,\nRoomAdded, RoomRemoved", "AsyncAPI")
+Rel(events, topology_events, "subscribe: topology events", "AsyncAPI")
+Rel(topology_events, location_projection, "Обновляет проекцию")
+
+SHOW_LEGEND()
+@enduml

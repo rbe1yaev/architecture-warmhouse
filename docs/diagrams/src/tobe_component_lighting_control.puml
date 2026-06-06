@@ -1,0 +1,46 @@
+@startuml tobe_component_lighting_control
+!include <C4/C4_Component>
+
+title Component Diagram — Lighting Control Service (To-Be)
+
+Container(gateway, "API Gateway", "REST / HTTPS", "Единая точка входа для\nпользовательских команд")
+Container(scheduling, "Scheduling Service", "Microservice", "Вызывает команды освещения\nпо расписанию (REST)")
+Container(provisioning, "Device Provisioning Service", "Microservice", "Владеет жизненным циклом\nподключения устройств")
+Container(connectivity, "Device Connectivity Gateway", "IoT Gateway", "Принимает команды по REST\nи доставляет на устройство")
+Container(telemetry, "Telemetry Service", "Microservice", "Собирает метрики и события\nдля мониторинга")
+ContainerQueue(events, "Event Channels", "AsyncAPI", "Каналы асинхронных событий\n(publish/subscribe)")
+ContainerDb(lighting_db, "Lighting Store", "Реляционная СУБД", "Состояние светильников")
+
+Container_Boundary(lighting, "Lighting Control Service") {
+    Component(api, "Lighting API Controller", "REST API", "Принимает SwitchLightOn\nи SwitchLightOff от пользователя\nи из расписаний")
+    Component(command_handler, "Lighting Command Handler", "Application Component", "Оркестрирует команды управления\nосвещением")
+    Component(device_projection, "Lighting Device Projection", "Read Model", "Локальный список активных\nосветительных устройств")
+    Component(lifecycle_events, "Device Lifecycle Event Handler", "AsyncAPI subscriber", "Обрабатывает события жизненного\nцикла lighting-устройств")
+    Component(lighting_model, "LightingDevice Aggregate", "Domain Model", "Проверяет инварианты освещения:\nстатус устройства")
+    Component(command_factory, "Device Command Factory", "Application Component", "Преобразует доменную команду\nв команду физическому устройству")
+    Component(repository, "Lighting Repository", "Repository", "Сохраняет состояние и историю\nкоманд освещения")
+    Component(event_publisher, "Domain Event Publisher", "AsyncAPI publisher", "Публикует LightToggled")
+    Component(connectivity_client, "Connectivity Client", "REST client", "Вызывает Device Connectivity\nGateway и получает подтверждение\nисполнения команды")
+}
+
+Rel(gateway, api, "Команды освещения", "REST / OpenAPI")
+Rel(api, command_handler, "Передаёт команду")
+Rel(scheduling, api, "Срабатывание расписания", "REST / OpenAPI")
+Rel(command_handler, device_projection, "Проверяет активное устройство")
+Rel(command_handler, lighting_model, "Создаёт/изменяет агрегат")
+Rel(command_handler, repository, "Сохраняет состояние")
+Rel(repository, lighting_db, "Читает/пишет")
+Rel(device_projection, lighting_db, "Читает/пишет\nпроекцию устройств")
+Rel(command_handler, command_factory, "Готовит команду устройства")
+Rel(command_handler, event_publisher, "Передаёт доменные события")
+Rel(command_factory, connectivity_client, "Передаёт команду устройства")
+Rel(connectivity_client, connectivity, "SwitchLightOn/Off", "REST")
+
+Rel(provisioning, events, "publish: DeviceRegistered,\nDeviceDeactivated, DeviceRemoved", "AsyncAPI")
+Rel(events, lifecycle_events, "subscribe: lighting lifecycle events", "AsyncAPI")
+Rel(lifecycle_events, device_projection, "Обновляет проекцию")
+Rel(event_publisher, events, "publish: LightToggled", "AsyncAPI")
+Rel(events, telemetry, "subscribe: события освещения", "AsyncAPI")
+
+SHOW_LEGEND()
+@enduml

@@ -1,0 +1,519 @@
+openapi: 3.0.3
+info:
+  title: Device Provisioning Service API
+  description: |
+    API сервиса подключения устройств (Device Provisioning Service).
+
+    Сервис отвечает за полный жизненный цикл устройств умного дома:
+    регистрацию, активацию, деактивацию и удаление. После успешной
+    регистрации публикует доменное событие `DeviceRegistered`, на которое
+    подписываются сервисы управления устройствами (Heating, Lighting, Gate,
+    Surveillance Control Services).
+
+    **Аутентификация:** все эндпоинты защищены JWT-токеном (Bearer).
+    Токен выдаётся IAM Service и передаётся через API Gateway.
+  version: 1.0.0
+  contact:
+    name: Тёплый дом
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Development (через API Gateway)
+
+tags:
+  - name: devices
+    description: Управление жизненным циклом устройств
+
+paths:
+  /devices:
+    post:
+      summary: Зарегистрировать устройство
+      description: |
+        Регистрирует новое устройство в экосистеме. Устройство создаётся
+        со статусом `pending` и не активно. После успешной регистрации
+        публикуется доменное событие `DeviceRegistered`.
+
+        Сотрудник компании указывает тип устройства и локацию (ID комнаты),
+        к которой оно привязывается. Локация должна существовать в
+        Home Topology Service.
+      operationId: registerDevice
+      tags:
+        - devices
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceRegisterRequest'
+            examples:
+              heating_sensor:
+                summary: Регистрация термодатчика
+                value:
+                  name: "Термодатчик гостиная"
+                  type: "heating"
+                  locationId: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                  config:
+                    minTemperature: 10
+                    maxTemperature: 35
+                    calibrationOffset: 0.5
+              gate_device:
+                summary: Регистрация привода ворот
+                value:
+                  name: "Ворота въезд"
+                  type: "gate"
+                  locationId: "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+                  config:
+                    driveType: "sliding"
+                    autoCloseAfterSeconds: 300
+      responses:
+        '201':
+          description: Устройство успешно зарегистрировано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+              examples:
+                created:
+                  summary: Созданное устройство
+                  value:
+                    id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    name: "Термодатчик гостиная"
+                    type: "heating"
+                    status: "pending"
+                    locationId: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    config:
+                      minTemperature: 10
+                      maxTemperature: 35
+                      calibrationOffset: 0.5
+                    createdAt: "2026-06-06T10:00:00Z"
+                    updatedAt: "2026-06-06T10:00:00Z"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Локация не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                location_not_found:
+                  value:
+                    code: 404
+                    message: "Location not found"
+                    details: "locationId '3fa85f64-5717-4562-b3fc-2c963f66afa6' does not exist"
+        '422':
+          description: Устройство данного типа не поддерживается
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                unsupported_type:
+                  value:
+                    code: 422
+                    message: "Unsupported device type"
+                    details: "No adapter registered for type 'unknown_device'"
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /devices/{id}:
+    get:
+      summary: Получить устройство по ID
+      description: |
+        Возвращает полную информацию об устройстве: тип, текущий статус
+        жизненного цикла, локацию и конфигурацию.
+      operationId: getDevice
+      tags:
+        - devices
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          description: Данные устройства
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+              examples:
+                active_device:
+                  summary: Активное термоустройство
+                  value:
+                    id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    name: "Термодатчик гостиная"
+                    type: "heating"
+                    status: "active"
+                    locationId: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    config:
+                      minTemperature: 10
+                      maxTemperature: 35
+                      calibrationOffset: 0.5
+                    createdAt: "2026-06-06T10:00:00Z"
+                    updatedAt: "2026-06-06T11:30:00Z"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      summary: Удалить устройство
+      description: |
+        Удаляет устройство из экосистемы. Возможно только для устройств
+        со статусом `inactive`. Публикует доменное событие `DeviceRemoved`,
+        на которое подписываются соответствующие Control Services для
+        очистки своих данных.
+
+        Устройство в статусе `active` необходимо сначала деактивировать
+        (`PUT /devices/{id}/deactivate`).
+      operationId: removeDevice
+      tags:
+        - devices
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '204':
+          description: Устройство успешно удалено
+        '400':
+          description: Невозможно удалить активное устройство
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                device_active:
+                  value:
+                    code: 400
+                    message: "Cannot remove active device"
+                    details: "Deactivate device before removing. Current status: active"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /devices/{id}/activate:
+    put:
+      summary: Активировать устройство
+      description: |
+        Переводит устройство из статуса `pending` или `inactive` в `active`.
+        Публикует доменное событие `DeviceActivated`. После активации
+        устройство готово принимать команды от Control Services и
+        отправлять телеметрию.
+      operationId: activateDevice
+      tags:
+        - devices
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          description: Устройство активировано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+              examples:
+                activated:
+                  summary: Устройство после активации
+                  value:
+                    id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    name: "Термодатчик гостиная"
+                    type: "heating"
+                    status: "active"
+                    locationId: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    config:
+                      minTemperature: 10
+                      maxTemperature: 35
+                      calibrationOffset: 0.5
+                    createdAt: "2026-06-06T10:00:00Z"
+                    updatedAt: "2026-06-06T10:05:00Z"
+        '400':
+          description: Устройство уже активно или не может быть активировано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                already_active:
+                  value:
+                    code: 400
+                    message: "Device is already active"
+                    details: "Device 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' is already in status 'active'"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /devices/{id}/deactivate:
+    put:
+      summary: Деактивировать устройство
+      description: |
+        Переводит устройство из статуса `active` в `inactive`.
+        Публикует доменное событие `DeviceDeactivated`. После деактивации
+        устройство перестаёт принимать команды и отправлять телеметрию.
+        Деактивированное устройство можно удалить или повторно активировать.
+      operationId: deactivateDevice
+      tags:
+        - devices
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          description: Устройство деактивировано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+              examples:
+                deactivated:
+                  summary: Устройство после деактивации
+                  value:
+                    id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    name: "Термодатчик гостиная"
+                    type: "heating"
+                    status: "inactive"
+                    locationId: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                    config:
+                      minTemperature: 10
+                      maxTemperature: 35
+                      calibrationOffset: 0.5
+                    createdAt: "2026-06-06T10:00:00Z"
+                    updatedAt: "2026-06-06T12:00:00Z"
+        '400':
+          description: Устройство уже неактивно или не может быть деактивировано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                already_inactive:
+                  value:
+                    code: 400
+                    message: "Device is not active"
+                    details: "Device 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' is in status 'inactive', cannot deactivate"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  schemas:
+    Device:
+      type: object
+      description: Устройство умного дома
+      required:
+        - id
+        - name
+        - type
+        - status
+        - locationId
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Уникальный идентификатор устройства
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        name:
+          type: string
+          description: Человекочитаемое название устройства
+          example: "Термодатчик гостиная"
+        type:
+          $ref: '#/components/schemas/DeviceType'
+        status:
+          $ref: '#/components/schemas/DeviceStatus'
+        locationId:
+          type: string
+          format: uuid
+          description: Идентификатор комнаты (из Home Topology Service)
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        config:
+          type: object
+          description: |
+            Конфигурация устройства, специфичная для его типа.
+            Структура определяется адаптером соответствующего типа устройства.
+          additionalProperties: true
+          example:
+            minTemperature: 10
+            maxTemperature: 35
+            calibrationOffset: 0.5
+        createdAt:
+          type: string
+          format: date-time
+          description: Дата и время регистрации устройства
+          example: "2026-06-06T10:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Дата и время последнего изменения
+          example: "2026-06-06T11:30:00Z"
+
+    DeviceRegisterRequest:
+      type: object
+      description: Данные для регистрации нового устройства
+      required:
+        - name
+        - type
+        - locationId
+      properties:
+        name:
+          type: string
+          description: Человекочитаемое название устройства
+          minLength: 1
+          maxLength: 100
+          example: "Термодатчик гостиная"
+        type:
+          $ref: '#/components/schemas/DeviceType'
+        locationId:
+          type: string
+          format: uuid
+          description: Идентификатор комнаты из Home Topology Service
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+        config:
+          type: object
+          description: |
+            Начальная конфигурация устройства, специфичная для его типа.
+            Структура зависит от адаптера типа устройства.
+          additionalProperties: true
+          example:
+            minTemperature: 10
+            maxTemperature: 35
+            calibrationOffset: 0.5
+
+    DeviceType:
+      type: string
+      description: |
+        Тип устройства. Определяет, какой адаптер будет использован
+        при регистрации и какой Control Service управляет устройством.
+      enum:
+        - heating
+        - lighting
+        - gate
+        - surveillance
+      example: "heating"
+
+    DeviceStatus:
+      type: string
+      description: |
+        Статус жизненного цикла устройства:
+        - `pending` — зарегистрировано, ожидает активации
+        - `active` — активно, принимает команды и отправляет телеметрию
+        - `inactive` — деактивировано вручную
+        - `offline` — активно, но потеряло связь (определяется Device Connectivity Gateway)
+      enum:
+        - pending
+        - active
+        - inactive
+        - offline
+      example: "active"
+
+    Error:
+      type: object
+      description: Описание ошибки
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          description: HTTP-код ошибки
+          example: 404
+        message:
+          type: string
+          description: Краткое описание ошибки
+          example: "Device not found"
+        details:
+          type: string
+          description: Подробное описание причины ошибки
+          example: "Device with id 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' does not exist"
+
+  parameters:
+    DeviceId:
+      name: id
+      in: path
+      required: true
+      description: Идентификатор устройства (UUID)
+      schema:
+        type: string
+        format: uuid
+        example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+
+  responses:
+    BadRequest:
+      description: Некорректный запрос (ошибка валидации)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            validation_error:
+              value:
+                code: 400
+                message: "Validation error"
+                details: "Field 'locationId' must be a valid UUID"
+
+    Unauthorized:
+      description: Отсутствует или недействителен JWT-токен
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missing_token:
+              value:
+                code: 401
+                message: "Unauthorized"
+                details: "Bearer token is missing or expired"
+
+    NotFound:
+      description: Устройство не найдено
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            not_found:
+              value:
+                code: 404
+                message: "Device not found"
+                details: "Device with id 'a1b2c3d4-e5f6-7890-abcd-ef1234567890' does not exist"
+
+    InternalError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            server_error:
+              value:
+                code: 500
+                message: "Internal server error"
+                details: "An unexpected error occurred. Please try again later."
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT-токен, выданный IAM Service. Передаётся в заголовке:
+        `Authorization: Bearer <token>`

@@ -1,0 +1,21 @@
+@startuml asis_context
+!include <C4/C4_Context>
+
+title System Context Diagram — Тёплый дом (As-Is)
+
+Person(user, "Пользователь", "Управляет отоплением\nи мониторит температуру\nчерез веб-интерфейс")
+Person(employee, "Сотрудник компании", "Подключает и регистрирует\nдатчики в системе")
+
+System(warmhouse, "Система Тёплый дом", "Монолитное приложение\nуправления отоплением.\nGo + Gin, порт 8080")
+
+System_Ext(temp_api, "Temperature API", "Внешний сервис получения\nтемпературных показаний\nс датчиков. Порт 8081")
+
+SystemDb(db, "PostgreSQL", "База данных сенсоров.\nХранит конфигурацию,\nстатус и значения датчиков")
+
+Rel(user, warmhouse, "Управляет отоплением,\nпросматривает температуру", "HTTPS")
+Rel(employee, warmhouse, "Регистрирует датчики\nв системе", "HTTPS")
+Rel(warmhouse, temp_api, "Запрашивает текущие\nпоказания температуры", "HTTP REST")
+Rel(warmhouse, db, "Читает и записывает\nданные сенсоров", "SQL / pgx")
+
+SHOW_LEGEND()
+@enduml

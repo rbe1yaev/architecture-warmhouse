@@ -1,0 +1,39 @@
+@startuml tobe_component_home_topology
+!include <C4/C4_Component>
+
+title Component Diagram — Home Topology Service (To-Be)
+
+Container(gateway, "API Gateway", "REST / HTTPS", "Единая точка входа для\nпользовательских команд")
+Container(provisioning, "Device Provisioning Service", "Microservice", "Использует locationId\nпри регистрации устройств")
+Container(telemetry, "Telemetry Service", "Microservice", "Группирует метрики\nпо локациям")
+Container(scheduling, "Scheduling Service", "Microservice", "Привязывает расписания\nк дому или комнате")
+ContainerQueue(events, "Event Channels", "AsyncAPI", "Каналы асинхронных событий\n(publish/subscribe)")
+ContainerDb(topology_db, "Topology Store", "Реляционная СУБД", "Дома, комнаты\nи их принадлежность пользователю")
+
+Container_Boundary(topology, "Home Topology Service") {
+    Component(api, "Topology API Controller", "REST API", "Принимает AddHome, AddRoom,\nRemoveRoom и запросы локаций")
+    Component(command_handler, "Topology Command Handler", "Application Component", "Оркестрирует изменения\nструктуры дома")
+    Component(query_service, "Topology Query Service", "Application Component", "Возвращает дерево домов\nи комнат для downstream-сервисов")
+    Component(home_model, "Home Aggregate", "Domain Model", "Проверяет инварианты дома:\nвладелец, адрес, список комнат")
+    Component(room_model, "Room Entity", "Domain Model", "Проверяет атрибуты комнаты\nи принадлежность дому")
+    Component(repository, "Topology Repository", "Repository", "Сохраняет дома\nи комнаты")
+    Component(event_publisher, "Domain Event Publisher", "AsyncAPI publisher", "Публикует HomeAdded,\nRoomAdded, RoomRemoved")
+}
+
+Rel(gateway, api, "CRUD домов и комнат", "REST / OpenAPI")
+Rel(api, command_handler, "Передаёт команду")
+Rel(api, query_service, "Запрашивает топологию")
+Rel(command_handler, home_model, "Создаёт/изменяет агрегат")
+Rel(command_handler, room_model, "Добавляет/удаляет комнату")
+Rel(command_handler, repository, "Сохраняет изменения")
+Rel(query_service, repository, "Читает топологию")
+Rel(repository, topology_db, "Читает/пишет")
+Rel(command_handler, event_publisher, "Передаёт доменные события")
+Rel(event_publisher, events, "publish: HomeAdded,\nRoomAdded, RoomRemoved", "AsyncAPI")
+
+Rel(events, provisioning, "subscribe: события топологии\nдля проверки locationId", "AsyncAPI")
+Rel(events, telemetry, "subscribe: события топологии\nдля группировки метрик", "AsyncAPI")
+Rel(events, scheduling, "subscribe: события топологии\nдля расписаний по локациям", "AsyncAPI")
+
+SHOW_LEGEND()
+@enduml

@@ -1,0 +1,44 @@
+@startuml tobe_code_register_device
+!include <C4/C4_Sequence>
+
+title C4 Code — RegisterDevice (Device Provisioning Service)
+
+Person(user, "Владелец дома", "Регистрирует новое устройство\nв экосистеме")
+Container(gateway, "API Gateway", "REST / HTTPS", "Единая точка входа")
+Component(api, "Device API Controller", "REST API", "Принимает HTTP-запросы,\nвалидирует формат")
+Component(cmd, "Provisioning Command Handler", "Application Component", "Оркестрирует сценарий\nRegisterDevice")
+Component(loc_proj, "Location Projection", "Read Model", "Проверяет существование\nlocationId в проекции")
+Component(adapter_reg, "Device Type Adapter Registry", "Application Component", "Выбирает адаптер\nпо DeviceType")
+Component(adapter, "Device Type Adapter", "Application Component", "Валидирует type-specific\nконфигурацию устройства")
+Component(aggregate, "Device Aggregate", "Domain Model", "Проверяет инварианты;\nсоздаёт экземпляр Device")
+Component(repo, "Device Repository", "Repository", "Сохраняет агрегат\nв хранилище")
+Component(publisher, "Domain Event Publisher", "AsyncAPI publisher", "Публикует доменное событие\nDeviceRegistered")
+ContainerQueue(events, "Event Channels", "AsyncAPI", "Каналы асинхронных\nсобытий экосистемы")
+
+Rel(user, gateway, "1. POST /devices", "HTTPS / JSON")
+Rel(gateway, api, "2. POST /devices", "REST / OpenAPI")
+Rel(api, cmd, "3. RegisterDevice(deviceType,\nlocationId, config, name)")
+
+Rel(cmd, loc_proj, "4. validateLocation(locationId)")
+Rel(loc_proj, cmd, "5. OK / LocationNotFound")
+
+Rel(cmd, adapter_reg, "6. getAdapter(deviceType)")
+Rel(adapter_reg, adapter, "7. validateConfig(config)")
+Rel(adapter, adapter_reg, "8. OK / ConfigInvalid")
+Rel(adapter_reg, cmd, "9. Adapter (validated)")
+
+Rel(cmd, aggregate, "10. Device.register(\n    id, type, locationId,\n    config, name)")
+Rel(aggregate, cmd, "11. Device{status=PENDING}\n+ DeviceRegistered event")
+
+Rel(cmd, repo, "12. save(device)")
+Rel(repo, cmd, "13. OK")
+
+Rel(cmd, publisher, "14. publish(DeviceRegistered{\n    deviceId, deviceType,\n    locationId, timestamp})")
+Rel(publisher, events, "15. DeviceRegistered", "AsyncAPI")
+
+Rel(cmd, api, "16. device{id, status=PENDING}")
+Rel(api, gateway, "17. 201 Created {deviceId}")
+Rel(gateway, user, "18. 201 Created {deviceId}")
+
+SHOW_LEGEND()
+@enduml

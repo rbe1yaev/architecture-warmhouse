@@ -1,0 +1,53 @@
+@startuml tobe_containers_async
+!include <C4/C4_Container>
+
+title Container Diagram — Тёплый дом (To-Be) — Асинхронные связи
+
+System_Boundary(smarthouse, "Экосистема Тёплый дом") {
+
+    ContainerQueue(events, "Event Channels", "AsyncAPI", "Каналы асинхронных событий\n(publish/subscribe).\nКонкретный брокер — деталь\nреализации")
+
+    Container(connectivity, "Device Connectivity Gateway", "IoT Gateway", "Граница с устройствами партнёров.\nДоставляет команды и принимает\nтелеметрию. Протоколы подключения\nявляются деталью реализации")
+
+    ' --- Core: управление устройствами ---
+    Container(heating, "Heating Control Service", "Microservice", "Управление отоплением:\nтемпература, вкл/выкл")
+
+    Container(lighting, "Lighting Control Service", "Microservice", "Управление освещением:\nвкл/выкл")
+
+    Container(gate, "Gate Control Service", "Microservice", "Управление воротами:\nоткрыть, закрыть, статус")
+
+    Container(surveillance, "Surveillance Service", "Microservice", "Управление камерами:\nвкл/выкл, просмотр видеопотока")
+
+    ' --- Supporting ---
+    Container(provisioning, "Device Provisioning Service", "Microservice", "Регистрация и управление\nустройствами. Адаптеры\nпо типу устройства")
+
+    Container(topology, "Home Topology Service", "Microservice", "Управление топологией:\nдома, комнаты")
+
+    Container(telemetry, "Telemetry Service", "Microservice", "Приём, хранение\nи отображение метрик")
+
+}
+
+System_Ext(iot_devices, "IoT-устройства партнёров", "Термодатчики, реле,\nлампы, ворота, камеры")
+
+' ===================== Телеметрия (AsyncAPI) =====================
+Rel(iot_devices, connectivity, "Поток телеметрии", "IoT protocol")
+Rel(connectivity, telemetry, "Нормализованный\nпоток метрик", "AsyncAPI")
+
+' ===================== Доменные события (AsyncAPI) =====================
+Rel(provisioning, events, "publish: DeviceRegistered,\nDeviceDeactivated, DeviceRemoved", "AsyncAPI")
+Rel(events, heating, "subscribe: DeviceRegistered", "AsyncAPI")
+Rel(events, lighting, "subscribe: DeviceRegistered", "AsyncAPI")
+Rel(events, gate, "subscribe: DeviceRegistered", "AsyncAPI")
+Rel(events, surveillance, "subscribe: DeviceRegistered", "AsyncAPI")
+
+Rel(heating, events, "publish: HeatingToggled,\nTemperatureSet", "AsyncAPI")
+Rel(lighting, events, "publish: LightToggled", "AsyncAPI")
+Rel(gate, events, "publish: GateOpened,\nGateClosed", "AsyncAPI")
+Rel(surveillance, events, "publish: CameraEnabled,\nCameraDisabled", "AsyncAPI")
+Rel(events, telemetry, "subscribe: доменные события", "AsyncAPI")
+
+Rel(topology, events, "publish: HomeAdded,\nRoomAdded, RoomRemoved", "AsyncAPI")
+Rel(events, provisioning, "subscribe: RoomRemoved", "AsyncAPI")
+
+SHOW_LEGEND()
+@enduml

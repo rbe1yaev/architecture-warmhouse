@@ -57,9 +57,6 @@ cmake-build-*/
 # File-based project format
 *.iws
 
-# IntelliJ
-out/
-
 # mpeltonen/sbt-idea plugin
 .idea_modules/
 
@@ -192,3 +189,16 @@ build/
 
 tmp/
 task-*
+
+### Project internal (AI/agent context, source tasks) ###
+.opencode/
+opencode.json
+AGENT.md
+MEMORIES.md
+Задание1.md
+Задание2.md
+Задание3.md
+Задание4.md
+Задание5.md
+ОписаниеПроектнойРаботы.md
+Черновик.md

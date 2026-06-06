@@ -1,0 +1,33 @@
+@startuml tobe_component_iam
+!include <C4/C4_Component>
+
+title Component Diagram — IAM Service (To-Be)
+
+Container(gateway, "API Gateway", "REST / HTTPS", "Маршрутизирует запросы\nи проверяет аутентификацию")
+Container(all_services, "Domain Services", "Microservices", "Все микросервисы экосистемы,\nкоторые проверяют аутентификацию")
+ContainerQueue(events, "Event Channels", "AsyncAPI", "Каналы асинхронных событий\n(publish/subscribe)")
+ContainerDb(iam_db, "IAM Store", "Реляционная СУБД", "Пользователи\nи сессии")
+
+Container_Boundary(iam, "IAM Service") {
+    Component(auth_api, "Auth API Controller", "REST API", "Принимает регистрацию, login\nи logout")
+    Component(auth_service, "Authentication Service", "Application Component", "Проверяет credentials\nи управляет сессиями")
+    Component(session_service, "Session Service", "Session Management", "Выпускает и проверяет\nсессии пользователя")
+    Component(user_model, "User Aggregate", "Domain Model", "Проверяет инварианты пользователя:\nemail и статус")
+    Component(repository, "IAM Repository", "Repository", "Сохраняет пользователей\nи сессии")
+    Component(event_publisher, "Domain Event Publisher", "AsyncAPI publisher", "Публикует UserRegistered,\nUserAuthenticated, PasswordReset")
+}
+
+Rel(gateway, auth_api, "Регистрация и аутентификация", "REST / OpenAPI")
+Rel(gateway, session_service, "Проверка сессии", "REST / OpenAPI")
+Rel(all_services, session_service, "Проверка аутентификации", "REST / OpenAPI")
+Rel(auth_api, auth_service, "Передаёт credentials")
+Rel(auth_service, user_model, "Проверяет пользователя")
+Rel(auth_service, session_service, "Запрашивает сессию")
+Rel(auth_service, repository, "Читает/пишет сессию")
+Rel(session_service, repository, "Проверяет пользователя\nи сессию")
+Rel(repository, iam_db, "Читает/пишет")
+Rel(auth_service, event_publisher, "Передаёт доменные события")
+Rel(event_publisher, events, "publish: UserRegistered,\nUserAuthenticated, PasswordReset", "AsyncAPI")
+
+SHOW_LEGEND()
+@enduml

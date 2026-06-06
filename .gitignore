@@ -189,3 +189,15 @@ build/
 
 tmp/
 task-*
+
+### Project internal (AI/agent context, source tasks) ###
+.opencode/
+opencode.json
+AGENT.md
+MEMORIES.md
+Задание1.md
+Задание2.md
+Задание3.md
+Задание4.md
+ОписаниеПроектнойРаботы.md
+Черновик.md

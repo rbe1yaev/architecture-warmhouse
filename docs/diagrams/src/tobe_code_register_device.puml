@@ -1,0 +1,67 @@
+@startuml tobe_code_register_device
+
+title Code Diagram — RegisterDevice scenario (Device Provisioning Service)
+
+actor "Пользователь" as user
+participant "API Gateway" as gateway
+participant "Device API Controller" as api
+participant "RegisterDeviceHandler" as handler
+participant "LocationProjection" as location
+participant "DeviceTypeAdapterRegistry" as registry
+participant "DeviceTypeAdapter" as adapter
+participant "DeviceRegistration" as registration
+participant "Device" as device
+participant "DeviceRepository" as repository
+database "Provisioning Store" as store
+participant "DomainEventPublisher" as publisher
+queue "Event Channels\n(AsyncAPI)" as events
+participant "Control Services" as control
+
+user -> gateway: POST /devices\nRegisterDeviceRequest
+gateway -> api: registerDevice(request)
+api -> handler: handle(RegisterDeviceCommand)
+
+handler -> location: exists(command.locationId)
+alt locationId не найден
+    location --> handler: false
+    handler --> api: LocationNotFound
+    api --> gateway: 400 Bad Request
+    gateway --> user: Ошибка валидации locationId
+else locationId найден
+    location --> handler: true
+
+    handler -> registry: adapterFor(command.deviceType)
+    alt тип устройства не поддержан
+        registry --> handler: AdapterNotFound
+        handler --> api: UnsupportedDeviceType
+        api --> gateway: 400 Bad Request
+        gateway --> user: Ошибка типа устройства
+    else тип устройства поддержан
+        registry --> handler: adapter
+        handler -> adapter: validateConfig(command.config)
+        adapter --> handler: DeviceTypeMetadata
+
+        create registration
+        handler -> registration: create(command, metadata)
+        registration --> handler: DeviceRegistration
+
+        create device
+        handler -> device: register(registration)
+        device --> handler: Device(status=pending)
+
+        handler -> repository: save(device, registration)
+        repository -> store: INSERT device, registration
+        store --> repository: persisted
+        repository --> handler: saved
+
+        handler -> publisher: publish(DeviceRegistered)
+        publisher -> events: publish device.registered
+        events -> control: DeviceRegistered\nинициализация в нужном control-сервисе
+
+        handler --> api: DeviceRegisteredResponse
+        api --> gateway: 201 Created
+        gateway --> user: deviceId, status=pending
+    end
+end
+
+@enduml

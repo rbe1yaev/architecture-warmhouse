@@ -1,0 +1,46 @@
+@startuml tobe_component_gate_control
+!include <C4/C4_Component>
+
+title Component Diagram — Gate Control Service (To-Be)
+
+Container(gateway, "API Gateway", "REST / HTTPS", "Единая точка входа для\nпользовательских команд")
+Container(scheduling, "Scheduling Service", "Microservice", "Вызывает команды ворот\nпо расписанию (REST)")
+Container(provisioning, "Device Provisioning Service", "Microservice", "Владеет жизненным циклом\nподключения устройств")
+Container(connectivity, "Device Connectivity Gateway", "IoT Gateway", "Принимает команды по REST\nи доставляет на устройство")
+Container(telemetry, "Telemetry Service", "Microservice", "Собирает метрики и события\nдля мониторинга")
+ContainerQueue(events, "Event Channels", "AsyncAPI", "Каналы асинхронных событий\n(publish/subscribe)")
+ContainerDb(gate_db, "Gate Store", "Реляционная СУБД", "Состояние ворот")
+
+Container_Boundary(gate, "Gate Control Service") {
+    Component(api, "Gate API Controller", "REST API", "Принимает OpenGate, CloseGate\nи запросы статуса от пользователя\nи из расписаний")
+    Component(command_handler, "Gate Command Handler", "Application Component", "Оркестрирует команды управления\nворотами")
+    Component(device_projection, "Gate Device Projection", "Read Model", "Локальный список активных\nприводов ворот")
+    Component(lifecycle_events, "Device Lifecycle Event Handler", "AsyncAPI subscriber", "Обрабатывает события жизненного\nцикла gate-устройств")
+    Component(gate_model, "GateDevice Aggregate", "Domain Model", "Проверяет инварианты ворот:\nopen/closed/moving, запрет\nконфликтующих команд")
+    Component(command_factory, "Device Command Factory", "Application Component", "Преобразует OpenGate/CloseGate\nв команду физическому приводу")
+    Component(repository, "Gate Repository", "Repository", "Сохраняет состояние ворот")
+    Component(event_publisher, "Domain Event Publisher", "AsyncAPI publisher", "Публикует GateOpened\nи GateClosed")
+    Component(connectivity_client, "Connectivity Client", "REST client", "Вызывает Device Connectivity\nGateway и получает подтверждение\nисполнения команды")
+}
+
+Rel(gateway, api, "Команды ворот", "REST / OpenAPI")
+Rel(api, command_handler, "Передаёт команду")
+Rel(scheduling, api, "Срабатывание расписания", "REST / OpenAPI")
+Rel(command_handler, device_projection, "Проверяет активный привод")
+Rel(command_handler, gate_model, "Создаёт/изменяет агрегат")
+Rel(command_handler, repository, "Сохраняет состояние")
+Rel(repository, gate_db, "Читает/пишет")
+Rel(device_projection, gate_db, "Читает/пишет\nпроекцию устройств")
+Rel(command_handler, command_factory, "Готовит команду приводу")
+Rel(command_handler, event_publisher, "Передаёт доменные события")
+Rel(command_factory, connectivity_client, "Передаёт команду устройства")
+Rel(connectivity_client, connectivity, "OpenGate, CloseGate", "REST")
+
+Rel(provisioning, events, "publish: DeviceRegistered,\nDeviceDeactivated, DeviceRemoved", "AsyncAPI")
+Rel(events, lifecycle_events, "subscribe: gate lifecycle events", "AsyncAPI")
+Rel(lifecycle_events, device_projection, "Обновляет проекцию")
+Rel(event_publisher, events, "publish: GateOpened,\nGateClosed", "AsyncAPI")
+Rel(events, telemetry, "subscribe: события ворот", "AsyncAPI")
+
+SHOW_LEGEND()
+@enduml

@@ -1,0 +1,48 @@
+@startuml tobe_component_heating_control
+!include <C4/C4_Component>
+
+title Component Diagram — Heating Control Service (To-Be)
+
+Container(gateway, "API Gateway", "REST / HTTPS", "Единая точка входа для\nпользовательских команд")
+Container(scheduling, "Scheduling Service", "Microservice", "Вызывает команды отопления\nпо расписанию (REST)")
+Container(provisioning, "Device Provisioning Service", "Microservice", "Владеет жизненным циклом\nподключения устройств")
+Container(connectivity, "Device Connectivity Gateway", "IoT Gateway", "Принимает команды по REST\nи доставляет на устройство")
+Container(telemetry, "Telemetry Service", "Microservice", "Собирает метрики и события\nдля мониторинга")
+ContainerQueue(events, "Event Channels", "AsyncAPI", "Каналы асинхронных событий\n(publish/subscribe)")
+ContainerDb(heating_db, "Heating Store", "Реляционная СУБД", "Состояние отопительных\nустройств и целевая температура")
+
+Container_Boundary(heating, "Heating Control Service") {
+    Component(api, "Heating API Controller", "REST API", "Принимает команды SetTemperature,\nTurnHeatingOn и TurnHeatingOff\nот пользователя и из расписаний")
+    Component(command_handler, "Heating Command Handler", "Application Component", "Оркестрирует команды управления\nотоплением и транзакционные\nизменения состояния")
+    Component(device_projection, "Heating Device Projection", "Read Model", "Локальный список активных\nотопительных устройств из событий\nDevice Provisioning")
+    Component(lifecycle_events, "Device Lifecycle Event Handler", "AsyncAPI subscriber", "Обрабатывает DeviceRegistered,\nDeviceDeactivated, DeviceRemoved\nдля отопительных устройств")
+    Component(heating_model, "HeatingDevice Aggregate", "Domain Model", "Проверяет инварианты отопления:\nдопустимый диапазон температуры,\nстатус реле, активность устройства")
+    Component(command_factory, "Device Command Factory", "Application Component", "Преобразует доменную команду\nв команду для физического устройства")
+    Component(repository, "Heating Repository", "Repository", "Сохраняет состояние агрегата")
+    Component(event_publisher, "Domain Event Publisher", "AsyncAPI publisher", "Публикует TemperatureSet\nи HeatingToggled")
+    Component(connectivity_client, "Connectivity Client", "REST client", "Вызывает Device Connectivity\nGateway и получает подтверждение\nисполнения команды")
+}
+
+Rel(gateway, api, "Команды отопления", "REST / OpenAPI")
+
+Rel(api, command_handler, "Передаёт команду")
+Rel(scheduling, api, "Срабатывание расписания", "REST / OpenAPI")
+Rel(command_handler, device_projection, "Проверяет, что устройство\nзарегистрировано и активно")
+Rel(command_handler, heating_model, "Создаёт/изменяет агрегат")
+Rel(command_handler, repository, "Сохраняет состояние")
+Rel(repository, heating_db, "Читает/пишет")
+Rel(device_projection, heating_db, "Читает/пишет\nпроекцию устройств")
+Rel(command_handler, command_factory, "Готовит команду\nдля физического устройства")
+Rel(command_handler, event_publisher, "Передаёт доменные события")
+Rel(command_factory, connectivity_client, "Передаёт команду устройства")
+Rel(connectivity_client, connectivity, "SetTemperature,\nTurnHeatingOn/Off", "REST")
+
+Rel(provisioning, events, "publish: DeviceRegistered,\nDeviceDeactivated, DeviceRemoved", "AsyncAPI")
+Rel(events, lifecycle_events, "subscribe: события жизненного\nцикла устройств", "AsyncAPI")
+Rel(lifecycle_events, device_projection, "Обновляет проекцию")
+
+Rel(event_publisher, events, "publish: TemperatureSet,\nHeatingToggled", "AsyncAPI")
+Rel(events, telemetry, "subscribe: события отопления", "AsyncAPI")
+
+SHOW_LEGEND()
+@enduml

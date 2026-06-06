@@ -1,67 +1,44 @@
 @startuml tobe_code_register_device
+!include <C4/C4_Sequence>
 
-title Code Diagram — RegisterDevice scenario (Device Provisioning Service)
+title C4 Code — RegisterDevice (Device Provisioning Service)
 
-actor "Пользователь" as user
-participant "API Gateway" as gateway
-participant "Device API Controller" as api
-participant "RegisterDeviceHandler" as handler
-participant "LocationProjection" as location
-participant "DeviceTypeAdapterRegistry" as registry
-participant "DeviceTypeAdapter" as adapter
-participant "DeviceRegistration" as registration
-participant "Device" as device
-participant "DeviceRepository" as repository
-database "Provisioning Store" as store
-participant "DomainEventPublisher" as publisher
-queue "Event Channels\n(AsyncAPI)" as events
-participant "Control Services" as control
+Person(user, "Владелец дома", "Регистрирует новое устройство\nв экосистеме")
+Container(gateway, "API Gateway", "REST / HTTPS", "Единая точка входа")
+Component(api, "Device API Controller", "REST API", "Принимает HTTP-запросы,\nвалидирует формат")
+Component(cmd, "Provisioning Command Handler", "Application Component", "Оркестрирует сценарий\nRegisterDevice")
+Component(loc_proj, "Location Projection", "Read Model", "Проверяет существование\nlocationId в проекции")
+Component(adapter_reg, "Device Type Adapter Registry", "Application Component", "Выбирает адаптер\nпо DeviceType")
+Component(adapter, "Device Type Adapter", "Application Component", "Валидирует type-specific\nконфигурацию устройства")
+Component(aggregate, "Device Aggregate", "Domain Model", "Проверяет инварианты;\nсоздаёт экземпляр Device")
+Component(repo, "Device Repository", "Repository", "Сохраняет агрегат\nв хранилище")
+Component(publisher, "Domain Event Publisher", "AsyncAPI publisher", "Публикует доменное событие\nDeviceRegistered")
+ContainerQueue(events, "Event Channels", "AsyncAPI", "Каналы асинхронных\nсобытий экосистемы")
 
-user -> gateway: POST /devices\nRegisterDeviceRequest
-gateway -> api: registerDevice(request)
-api -> handler: handle(RegisterDeviceCommand)
+Rel(user, gateway, "1. POST /devices", "HTTPS / JSON")
+Rel(gateway, api, "2. POST /devices", "REST / OpenAPI")
+Rel(api, cmd, "3. RegisterDevice(deviceType,\nlocationId, config, name)")
 
-handler -> location: exists(command.locationId)
-alt locationId не найден
-    location --> handler: false
-    handler --> api: LocationNotFound
-    api --> gateway: 400 Bad Request
-    gateway --> user: Ошибка валидации locationId
-else locationId найден
-    location --> handler: true
+Rel(cmd, loc_proj, "4. validateLocation(locationId)")
+Rel(loc_proj, cmd, "5. OK / LocationNotFound")
 
-    handler -> registry: adapterFor(command.deviceType)
-    alt тип устройства не поддержан
-        registry --> handler: AdapterNotFound
-        handler --> api: UnsupportedDeviceType
-        api --> gateway: 400 Bad Request
-        gateway --> user: Ошибка типа устройства
-    else тип устройства поддержан
-        registry --> handler: adapter
-        handler -> adapter: validateConfig(command.config)
-        adapter --> handler: DeviceTypeMetadata
+Rel(cmd, adapter_reg, "6. getAdapter(deviceType)")
+Rel(adapter_reg, adapter, "7. validateConfig(config)")
+Rel(adapter, adapter_reg, "8. OK / ConfigInvalid")
+Rel(adapter_reg, cmd, "9. Adapter (validated)")
 
-        create registration
-        handler -> registration: create(command, metadata)
-        registration --> handler: DeviceRegistration
+Rel(cmd, aggregate, "10. Device.register(\n    id, type, locationId,\n    config, name)")
+Rel(aggregate, cmd, "11. Device{status=PENDING}\n+ DeviceRegistered event")
 
-        create device
-        handler -> device: register(registration)
-        device --> handler: Device(status=pending)
+Rel(cmd, repo, "12. save(device)")
+Rel(repo, cmd, "13. OK")
 
-        handler -> repository: save(device, registration)
-        repository -> store: INSERT device, registration
-        store --> repository: persisted
-        repository --> handler: saved
+Rel(cmd, publisher, "14. publish(DeviceRegistered{\n    deviceId, deviceType,\n    locationId, timestamp})")
+Rel(publisher, events, "15. DeviceRegistered", "AsyncAPI")
 
-        handler -> publisher: publish(DeviceRegistered)
-        publisher -> events: publish device.registered
-        events -> control: DeviceRegistered\nинициализация в нужном control-сервисе
+Rel(cmd, api, "16. device{id, status=PENDING}")
+Rel(api, gateway, "17. 201 Created {deviceId}")
+Rel(gateway, user, "18. 201 Created {deviceId}")
 
-        handler --> api: DeviceRegisteredResponse
-        api --> gateway: 201 Created
-        gateway --> user: deviceId, status=pending
-    end
-end
-
+SHOW_LEGEND()
 @enduml

@@ -53,7 +53,7 @@
 - `PUT /api/v1/sensors/:id` — `handlers/sensors.go:149` — частичное обновление (динамический SQL по непустым полям `SensorUpdate`).
 - `DELETE /api/v1/sensors/:id` — `handlers/sensors.go:172` — удаление.
 - `PATCH /api/v1/sensors/:id/value` — `handlers/sensors.go:189` — точечное обновление `value` и `status` (например, для приёма телеметрии).
-- `GET /api/v1/sensors/temperature/:location` — `handlers/sensors.go:104` — проксирующий запрос к внешнему API: `GET {TEMPERATURE_API_URL}/temperature?location={location}`, возвращает `{location, value, unit, status, timestamp, description}`.
+- `GET /api/v1/sensors/temperature/:location` — `handlers/sensors.go:104` — проксирующий запрос к внешнему API: `GET {TEMPERATURE_API_URL}/temperature?location={location}`, возвращает `{location, value, unit, status, timestamp, description}`. **Баг монолита:** маршрут недостижим — Gin перехватывает его wildcard-маршрутом `GET /:id` (`handlers/sensors.go:36`), зарегистрированным ранее в той же группе. Запрос к `/sensors/temperature/kitchen` интерпретируется как `GetSensorByID` с `id="temperature"` и возвращает `400 Bad Request`.
 
 **Интеграция с внешним сервисом**
 `services.TemperatureService` (`services/temperature_service.go:11`):
@@ -214,8 +214,8 @@ Dockerfile собирает статический бинарник (`CGO_ENABLE
 **Диаграмма контейнеров (Containers)**
 
 - [To-Be Containers](/docs/diagrams/out/tobe_containers.png) — все контейнеры и взаимодействия
-- [To-Be Containers Sync](/docs/diagrams/out/tobe_containers_sync.png) — отдельно синхронные
-- [To-Be Containers Async](/docs/diagrams/out/tobe_containers_async.png) — отдельно асинхронные
+- [To-Be Containers Sync](/docs/diagrams/out/tobe_containers_sync.png) — отдельно синхронные взаимодействия
+- [To-Be Containers Async](/docs/diagrams/out/tobe_containers_async.png) — отдельно асинхронные взаимодействия
 
 
 **Диаграмма компонентов (Components)**
@@ -244,63 +244,83 @@ Dockerfile собирает статический бинарник (`CGO_ENABLE
 
 ### 1. Тип API
 
-Укажите, какой тип API вы будете использовать для взаимодействия микросервисов. Объясните своё решение.
+В архитектуре используются два типа API, разделённые по природе взаимодействия.
+
+**REST API (OpenAPI 3.0)** — для синхронных взаимодействий, где инициатор ожидает немедленного подтверждения:
+- Пользовательские действия через Web App → API Gateway → микросервисы (команды управления устройствами, CRUD операции).
+- Аутентификация и валидация JWT-токенов: API Gateway → IAM Service.
+- Срабатывание расписаний: Scheduling Service → Control Services (`POST /commands`) — расписание должно получить подтверждение выполнения команды.
+- Команды на физические устройства: Control Services → Device Connectivity Gateway → IoT-устройство — цепочка завершается подтверждением доставки команды.
+
+**AsyncAPI (события)** — для асинхронных взаимодействий, где отправитель не ждёт ответа:
+- Жизненный цикл устройств: Device Provisioning Service публикует `DeviceRegistered` / `DeviceDeactivated` / `DeviceRemoved` — Control Services подписываются и инициализируют (или деактивируют) устройство в своём домене.
+- Доменные события управления: Control Services (`HeatingToggled`, `LightToggled`, `GateOpened` и др.) → Telemetry Service — факт изменения состояния записывается в time-series хранилище.
+- Телеметрия IoT: физические устройства → Device Connectivity Gateway → Telemetry Service — непрерывный поток метрик, устойчивый к кратковременному недоступности потребителя.
+- Топология: Home Topology Service публикует `RoomRemoved` → Device Provisioning Service проверяет привязанные устройства — слабая связанность, Home Topology не знает о потребителях.
+
+Разделение по природе взаимодействия устраняет двусмысленность «команда-как-событие»: команда = синхронный вызов с подтверждением; событие = уведомление о факте, который уже произошёл.
 
 ### 2. Документация API
 
-Здесь приложите ссылки на документацию API для микросервисов, которые вы спроектировали в первой части проектной работы. Для документирования используйте Swagger/OpenAPI или AsyncAPI.
+**REST API — Device Provisioning Service (OpenAPI 3.0)**
+
+Файл: [`docs/api/device-provisioning.openapi.yaml`](/docs/api/device-provisioning.openapi.yaml)
+
+Документирует полный жизненный цикл устройства — 5 эндпоинтов:
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| `POST` | `/api/v1/devices` | Зарегистрировать устройство (статус `pending`) |
+| `GET` | `/api/v1/devices/{id}` | Получить информацию об устройстве |
+| `PUT` | `/api/v1/devices/{id}/activate` | Активировать устройство (→ `active`) |
+| `PUT` | `/api/v1/devices/{id}/deactivate` | Деактивировать устройство (→ `inactive`) |
+| `DELETE` | `/api/v1/devices/{id}` | Удалить устройство (только из `inactive`) |
+
+Каждый эндпоинт содержит описание запроса и ответа, коды состояния (200/201/204/400/401/404/422/500) и примеры в блоке `examples`.
+
+**Async Events — Smart Home Events (AsyncAPI 3.0)**
+
+Файл: [`docs/api/smart-home-events.asyncapi.yaml`](/docs/api/smart-home-events.asyncapi.yaml)
+
+Документирует 5 каналов асинхронных событий:
+
+| Канал | Событие | Publisher | Subscriber(s) |
+|-------|---------|-----------|--------------|
+| `device.lifecycle.registered` | `DeviceRegistered` | Device Provisioning | Heating / Lighting / Gate / Surveillance Control |
+| `device.lifecycle.deactivated` | `DeviceDeactivated` | Device Provisioning | Heating / Lighting / Gate / Surveillance Control |
+| `control.heating.toggled` | `HeatingToggled` | Heating Control | Telemetry Service |
+| `telemetry.device.metric` | `TelemetryReceived` | Device Connectivity Gateway | Telemetry Service |
+| `topology.room.removed` | `RoomRemoved` | Home Topology | Device Provisioning |
+
+Каждое сообщение описано схемой payload с полным envelope (eventId, eventType, occurredAt) и примерами.
 
 # Задание 5. Работа с docker и docker-compose
 
-Перейдите в apps.
+### Решение
 
-Там находится приложение-монолит для работы с датчиками температуры. В README.md описано как запустить решение.
+**1. `temperature-api` (Go, стандартная библиотека)**
 
-Вам нужно:
+Файл: [`apps/temperature_api/main.go`](/apps/temperature_api/main.go)
 
-1) сделать простое приложение temperature-api на любом удобном для вас языке программирования, которое при запросе /temperature?location= будет отдавать рандомное значение температуры.
+Эндпоинты:
+- `GET /temperature?location=<name>` — рандомная температура по имени локации
+- `GET /temperature/{id}` — рандомная температура по числовому ID сенсора (используется `smart_home` при `GET /api/v1/sensors`)
+- `GET /health` — healthcheck
 
-Locations - название комнаты, sensorId - идентификатор названия комнаты
+Структура ответа соответствует ожиданиям `smart_home` (поля `value`, `unit`, `timestamp`, `location`, `status`, `sensor_id`, `sensor_type`, `description`).
 
-```
-	// If no location is provided, use a default based on sensor ID
-	if location == "" {
-		switch sensorID {
-		case "1":
-			location = "Living Room"
-		case "2":
-			location = "Bedroom"
-		case "3":
-			location = "Kitchen"
-		default:
-			location = "Unknown"
-		}
-	}
+**2. Dockerfile для `temperature-api`**
 
-	// If no sensor ID is provided, generate one based on location
-	if sensorID == "" {
-		switch location {
-		case "Living Room":
-			sensorID = "1"
-		case "Bedroom":
-			sensorID = "2"
-		case "Kitchen":
-			sensorID = "3"
-		default:
-			sensorID = "0"
-		}
-	}
-```
+Файл: [`apps/temperature_api/Dockerfile`](/apps/temperature_api/Dockerfile)
 
-2) Приложение следует упаковать в Docker и добавить в docker-compose. Порт по умолчанию должен быть 8081
+**3. `docker-compose.yml`**
 
-3) Кроме того для smart_home приложения требуется база данных - добавьте в docker-compose файл настройки для запуска postgres с указанием скрипта инициализации ./smart_home/init.sql
+Файл: [`apps/docker-compose.yml`](/apps/docker-compose.yml)
 
-Для проверки можно использовать Postman коллекцию smarthome-api.postman_collection.json и вызвать:
+Три сервиса:
 
-- Create Sensor
-- Get All Sensors
-
-Должно при каждом вызове отображаться разное значение температуры
-
-Ревьюер будет проверять точно так же.
+| Сервис | Образ / Build | Порт | Описание |
+|--------|--------------|------|----------|
+| `postgres` | `postgres:16-alpine` | 5432 | БД с healthcheck; инициализация через `./smart_home/init.sql` |
+| `temperature-api` | `./temperature_api` | 8081 | Имитатор датчика температуры |
+| `app` | `./smart_home` | 8080 | Монолит smart_home; ждёт healthy postgres и запущенного temperature-api |

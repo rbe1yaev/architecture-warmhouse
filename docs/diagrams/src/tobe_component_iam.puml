@@ -3,28 +3,29 @@
 
 title Component Diagram — IAM Service (To-Be)
 
-Container(gateway, "API Gateway", "REST / HTTPS", "Маршрутизирует запросы\nи проверяет аутентификацию")
-Container(all_services, "Domain Services", "Microservices", "Все микросервисы экосистемы,\nкоторые проверяют аутентификацию")
+Container(gateway, "API Gateway", "REST / HTTPS", "Единая точка входа.\nПроверяет JWT по публичному ключу\n(stateless) и прокидывает X-User-Id")
 ContainerQueue(events, "Event Channels", "AsyncAPI", "Каналы асинхронных событий\n(publish/subscribe)")
-ContainerDb(iam_db, "IAM Store", "Реляционная СУБД", "Пользователи\nи сессии")
+ContainerDb(iam_db, "IAM Store", "Реляционная СУБД", "Пользователи\nи refresh-токены")
 
 Container_Boundary(iam, "IAM Service") {
-    Component(auth_api, "Auth API Controller", "REST API", "Принимает регистрацию, login\nи logout")
-    Component(auth_service, "Authentication Service", "Application Component", "Проверяет credentials\nи управляет сессиями")
-    Component(session_service, "Session Service", "Session Management", "Выпускает и проверяет\nсессии пользователя")
+    Component(auth_api, "Auth API Controller", "REST API", "POST /register, POST /login,\nPOST /logout, POST /token/refresh")
+    Component(auth_service, "Authentication Service", "Application Component", "Проверяет credentials,\nуправляет жизненным циклом\nпользователя")
+    Component(token_service, "Token Service", "JWT / RS256", "Выпускает access JWT и refresh-токен.\nОтзывает refresh-токен при logout.\nПредоставляет JWKS endpoint")
     Component(user_model, "User Aggregate", "Domain Model", "Проверяет инварианты пользователя:\nemail и статус")
-    Component(repository, "IAM Repository", "Repository", "Сохраняет пользователей\nи сессии")
+    Component(repository, "IAM Repository", "Repository", "Сохраняет пользователей\nи refresh-токены")
     Component(event_publisher, "Domain Event Publisher", "AsyncAPI publisher", "Публикует UserRegistered,\nUserAuthenticated, PasswordReset")
 }
 
-Rel(gateway, auth_api, "Регистрация и аутентификация", "REST / OpenAPI")
-Rel(gateway, session_service, "Проверка сессии", "REST / OpenAPI")
-Rel(all_services, session_service, "Проверка аутентификации", "REST / OpenAPI")
+' Внешние связи
+Rel(gateway, auth_api, "Регистрация, login, logout,\nобновление токена", "REST / OpenAPI")
+Rel(gateway, token_service, "GET /jwks.json\n(публичный ключ для валидации JWT)", "REST / HTTPS")
+
+' Внутренние связи
 Rel(auth_api, auth_service, "Передаёт credentials")
 Rel(auth_service, user_model, "Проверяет пользователя")
-Rel(auth_service, session_service, "Запрашивает сессию")
-Rel(auth_service, repository, "Читает/пишет сессию")
-Rel(session_service, repository, "Проверяет пользователя\nи сессию")
+Rel(auth_service, token_service, "Запрашивает выпуск\nили отзыв токена")
+Rel(auth_service, repository, "Читает/пишет пользователя")
+Rel(token_service, repository, "Сохраняет/отзывает\nrefresh-токен")
 Rel(repository, iam_db, "Читает/пишет")
 Rel(auth_service, event_publisher, "Передаёт доменные события")
 Rel(event_publisher, events, "publish: UserRegistered,\nUserAuthenticated, PasswordReset", "AsyncAPI")

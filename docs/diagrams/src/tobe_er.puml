@@ -22,11 +22,11 @@ package "IAM Service" {
         updated_at : datetime
     }
 
-    entity "UserSession" as user_session {
+    entity "UserRefreshToken" as user_session {
         * id : UUID <<PK>>
         --
         user_id : UUID <<FK>>
-        session_ref : string
+        refresh_token : string
         expires_at : datetime
         created_at : datetime
     }
@@ -186,7 +186,7 @@ package "Scheduling Service" {
     }
 }
 
-user ||--o{ user_session : has
+user ||--o{ user_session : "has refresh tokens"
 
 user ||..o{ home : owns
 home ||--o{ room : contains

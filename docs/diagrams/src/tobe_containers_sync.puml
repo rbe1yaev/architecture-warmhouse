@@ -9,7 +9,7 @@ System_Boundary(smarthouse, "Экосистема Тёплый дом") {
 
     Container(webapp, "Web App", "SPA / Microfrontends", "Оболочка с микрофронтендами:\nHeating, Lighting, Gate,\nSurveillance, Scheduling")
 
-    Container(gateway, "API Gateway", "REST / HTTPS", "Единая точка входа.\nМаршрутизация и проверка\nаутентификации")
+    Container(gateway, "API Gateway", "REST / HTTPS", "Единая точка входа. Маршрутизация.\nStateless-валидация JWT по публичному\nключу; прокидывает X-User-Id сервисам")
 
     Container(connectivity, "Device Connectivity Gateway", "IoT Gateway", "Граница с устройствами партнёров.\nДоставляет команды и принимает\nтелеметрию. Протоколы подключения\nявляются деталью реализации")
 
@@ -40,8 +40,8 @@ System_Boundary(smarthouse, "Экосистема Тёплый дом") {
     ContainerDb(scheduling_db, "Scheduling Store", "Реляционная СУБД", "Расписания\nи действия")
 
     ' --- Generic ---
-    Container(iam, "IAM Service", "Microservice", "Регистрация, аутентификация\nи управление пользователями")
-    ContainerDb(iam_db, "IAM Store", "Реляционная СУБД", "Пользователи\nи сессии")
+    Container(iam, "IAM Service", "Microservice", "Регистрация, аутентификация\nи управление пользователями.\nВыдаёт JWT (access + refresh)")
+    ContainerDb(iam_db, "IAM Store", "Реляционная СУБД", "Пользователи\nи refresh-токены")
 }
 
 System_Ext(iot_devices, "IoT-устройства партнёров", "Термодатчики, реле,\nлампы, ворота, камеры")
@@ -50,7 +50,7 @@ System_Ext(iot_devices, "IoT-устройства партнёров", "Терм
 Rel(user, webapp, "Использует", "HTTPS")
 Rel(webapp, gateway, "API-запросы", "REST / HTTPS")
 
-Rel(gateway, iam, "Проверка аутентификации", "REST")
+Rel(gateway, iam, "Аутентификация / выдача JWT.\nПолучение JWKS (публичный ключ)", "REST")
 Rel(gateway, provisioning, "Управление устройствами", "REST")
 Rel(gateway, topology, "CRUD локаций", "REST")
 Rel(gateway, heating, "Команды отопления", "REST")
